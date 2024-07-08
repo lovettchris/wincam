@@ -1,0 +1,21 @@
+opencv-contrib-python
+numpy
+
+[:sys_platform == "win32"]
+pywin32
+
+[all]
+wincam[dev,test]
+
+[dev]
+build
+black
+isort
+flake8
+Flake8-pyproject
+mypy
+mypy-extensions
+types-PyYAML
+
+[test]
+pytest==7.3.1

@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ScreenCapture", "ScreenCapture\ScreenCapture.vcxproj", "{006DF20E-A899-42F1-AD3C-3B29295B7718}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|Any CPU.Build.0 = Debug|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|x64.ActiveCfg = Debug|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|x64.Build.0 = Debug|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|x86.ActiveCfg = Debug|Win32
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Debug|x86.Build.0 = Debug|Win32
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|Any CPU.ActiveCfg = Release|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|Any CPU.Build.0 = Release|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|x64.ActiveCfg = Release|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|x64.Build.0 = Release|x64
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|x86.ActiveCfg = Release|Win32
+		{006DF20E-A899-42F1-AD3C-3B29295B7718}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9441A099-F99C-42A2-A7BF-CE9814D24127}
+	EndGlobalSection
+EndGlobal

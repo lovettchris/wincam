@@ -1,0 +1,38 @@
+Metadata-Version: 2.1
+Name: wincam
+Version: 0.0.1
+Summary: A Python high-performance screenshot library for Windows 10+ using Direct3D11CaptureFramePool.
+Author: lovettchris
+Project-URL: Homepage, https://github.com/lovettchris/wincam
+Project-URL: Issues, https://github.com/lovettchris/wincam/issues
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: Microsoft :: Windows :: Windows 8.1
+Classifier: Operating System :: Microsoft :: Windows :: Windows 10
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Multimedia :: Graphics :: Capture
+Classifier: Topic :: Multimedia :: Graphics :: Capture :: Screen Capture
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: opencv-contrib-python
+Requires-Dist: numpy
+Requires-Dist: pywin32; sys_platform == "win32"
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: Flake8-pyproject; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: mypy-extensions; extra == "dev"
+Requires-Dist: types-PyYAML; extra == "dev"
+Provides-Extra: test
+Requires-Dist: pytest==7.3.1; extra == "test"
+Provides-Extra: all
+Requires-Dist: wincam[dev,test]; extra == "all"
+
+# wincam
+A fast screen capture library for python on Windows 10 and above (x64 only).
