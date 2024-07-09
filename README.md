@@ -67,9 +67,12 @@ defaults to 30 frames per second. The calls to `camera.get_bgr_frame()` will sel
 to hit that target as closely as possible so that the frames you collect form a nice smooth video as shown in the
 [video.py example](examples/video.py).
 
+Note, there is no point providing an `fps` target greater than the windows monitor refresh rate.  You can find
+this refresh rate on your Display Settings `Advanced settings` tab.  If you do you will only get duplicate frames
+since the underlying `Direct3D11CaptureFramePool` is only getting new frames at the refresh rate.  This is normally
+60fps, unless you have a fancy new GPU and monitor.  On a remote desktop this refresh rate can be lower, like 30 fps.
+
 Note that this sleep is more accurate that python `time.sleep()` which on Windows is very inaccurate with a
 tolerance of +/- 15 milliseconds!
-
-
 
 
