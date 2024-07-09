@@ -14,15 +14,20 @@ See [Demo Video](https://youtu.be/og7-3b0bsuo)
 
 ## Introduction
 
-When you need to capture video frames fast to get a nice smooth 30 or 60 fps video
-this library will do it, so long as you are on Windows 10.0.19041.0 or newer.
+When you need to capture video frames in a low latency (< 5 milliseconds into a numpy array)
+to get a nice smooth 30 or 60 fps video this library can do it.
 
-This is using a new Windows 10 API called [Direct3D11CaptureFramePool](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool?view=winrt-26100) which requires DirectX 11 and a GPU.
+This is using a new Windows 10 API called
+[Direct3D11CaptureFramePool](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool?view=winrt-26100)
+which requires DirectX 11 and a GPU.
 
-To get the fastest time possible, this library is implemented in C++ and the
-C++ library copies each frame directly into a buffer provided by the python code.
-This C++ library is loaded into your python process.
-Only one instance of DXCamera can be used per python process.
+To get the fastest time possible, this library is implemented in C++ and the C++ library copies each frame directly into
+a buffer provided by the python code. This C++ library is loaded into your python process. Only one instance of DXCamera
+can be used per python process.
+
+## Prerequisites
+
+Requires `Python 3.10` and `Windows 10.0.19041.0` or newer on an `x64` platform.
 
 ## Installation
 
@@ -34,8 +39,8 @@ See [https://pypi.org/project/wincam/](https://pypi.org/project/wincam/).
 
 ## Multiple Monitors
 
-This supports multiple monitors.  Windows can define negative X, and Y locations when a monitor is to the left or above
-the primary monitor.  The `DXCamera` will find and capture the appropriate monitor from the `x, y` locations you provide
+This supports multiple monitors. Windows can define negative X, and Y locations when a monitor is to the left or above
+the primary monitor. The `DXCamera` will find and capture the appropriate monitor from the `x, y` locations you provide
 and it will crop the image to the bounds you provide.
 
 The `DXCamera` does not support regions that span more than one monitor and it will report an error if you try.
@@ -45,7 +50,7 @@ The `DXCamera` does not support regions that span more than one monitor and it w
 The following example scripts are provided in this repo.
 
 - [examples/mirror.py](examples/mirror.py) - shows the captured frames in real time so you can see how it is performing
-on your machine.  Have some fun with infinite frames with frames!  Press ESCAPE to close the window.
+on your machine. Have some fun with infinite frames with frames!  Press ESCAPE to close the window.
 
 - [examples/video.py](examples/video.py) - records an .mp4 video to disk.
 
@@ -59,9 +64,9 @@ In each example can specify what to record using:
 ## Performance
 
 Each call to `camera.get_bgr_frame()` can be as fast as 1 millisecond because the C++ code is asynchronously writing to
-the buffer provided.  This way your python code is not blocking waiting for that frame. For this reason it is crucial
+the buffer provided. This way your python code is not blocking waiting for that frame. For this reason it is crucial
 that you use `DXCamera` in a `with` block as shown above since this ensures the life time of the python buffer used by
-the C++ code is managed correctly.  If you cannot use a `with` block for some reason then you must call the `stop()`
+the C++ code is managed correctly. If you cannot use a `with` block for some reason then you must call the `stop()`
 method.
 
 In order to hit a smooth target frame rate while recording video the `DXCamera` takes a target fps as input, which
@@ -69,13 +74,14 @@ defaults to 30 frames per second. The calls to `camera.get_bgr_frame()` will sel
 to hit that target as closely as possible so that the frames you collect form a nice smooth video as shown in the
 [video.py example](examples/video.py).
 
-Note, there is no point providing an `fps` target greater than the windows monitor refresh rate.  You can find
-this refresh rate on your Display Settings `Advanced settings` tab.  If you do you will only get duplicate frames
-since the underlying `Direct3D11CaptureFramePool` is only getting new frames at the refresh rate.  This is normally
-60fps, unless you have a fancy new GPU and monitor.  On a remote desktop this refresh rate can be lower, like 30 fps.
+Note, there is no point providing an `fps` target greater than the windows monitor refresh rate. You can find this
+refresh rate on your Display Settings `Advanced settings` tab. If you go higher than this rate you will only get
+duplicate frames since the underlying `Direct3D11CaptureFramePool` is only getting new frames at the refresh rate. This
+is normally 60fps, unless you have a fancy new GPU and monitor. On a remote desktop this refresh rate can be lower,
+like 30 fps.
 
 Note that this sleep is more accurate that python `time.sleep()` which on Windows is very inaccurate with a
-tolerance of +/- 15 milliseconds!
+tolerance of +/- 15 milliseconds.  But this more accurate sleep is using a spin wait which uses one core of your CPU.
 
 ## Credits
 
