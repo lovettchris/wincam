@@ -10,6 +10,8 @@ with DXCamera(x, y, w, h, fps=30) as camera:
         frame, timestamp = camera.get_bgr_frame()
 ```
 
+See [Demo Video](https://youtu.be/og7-3b0bsuo)
+
 ## Introduction
 
 When you need to capture video frames fast to get a nice smooth 30 or 60 fps video
