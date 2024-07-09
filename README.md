@@ -28,7 +28,7 @@ Only one instance of DXCamera can be used per python process.
 pip install wincam
 ```
 
-Note: OpenCV is required for color space conversion.
+See [https://pypi.org/project/wincam/](https://pypi.org/project/wincam/).
 
 ## Multiple Monitors
 
@@ -75,4 +75,9 @@ since the underlying `Direct3D11CaptureFramePool` is only getting new frames at 
 Note that this sleep is more accurate that python `time.sleep()` which on Windows is very inaccurate with a
 tolerance of +/- 15 milliseconds!
 
+## Credits
+
+This project was inspired by [dxcam](https://github.com/ra1nty/DXcam) and the
+[C++ Win32CaptureSample](https://github.com/robmikh/win32capturesample) and was made possible with lots of help from
+Windows team members Robert Mikhayelyan and Shawn Hargreaves.
 
