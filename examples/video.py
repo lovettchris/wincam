@@ -5,6 +5,7 @@ from threading import Thread
 from typing import List
 
 import cv2
+import numpy as np
 
 from wincam import DXCamera, Timer
 
@@ -76,11 +77,11 @@ def parse_handle(hwnd) -> int:
 
 class VideoRecorder:
     def __init__(self, output: str = "video.mp4"):
-        self._thread = None
+        self._thread: Thread | None = None
         self._stop = False
         self._output = output
-        self._video_writer = None
-        self._frames : List[np.ndarray] = []
+        self._video_writer: cv2.VideoWriter | None = None
+        self._frames: List[np.ndarray] = []
         self._timer = Timer()
         signal.signal(signal.SIGINT, self._signal_handler)
 
@@ -89,14 +90,14 @@ class VideoRecorder:
 
     def video_thread(self, x: int, y: int, w: int, h: int, fps: int):
         steps = []
-        with DXCamera(x, y, w, h, target_fps=fps) as cam:
-            frame, timestamp = cam.get_bgr_frame()
+        with DXCamera(x, y, w, h, fps=fps) as camera:
+            frame, timestamp = camera.get_bgr_frame()
             self._video_writer.write(frame)  # type: ignore
-            cam.reset_throttle()
+            camera.reset_throttle()
 
             while not self._stop:
                 self._timer.start()
-                frame, timestamp = cam.get_bgr_frame()
+                frame, timestamp = camera.get_bgr_frame()
                 self._frames += [frame]
                 self._video_writer.write(frame)
                 steps += [self._timer.ticks()]
@@ -113,7 +114,7 @@ class VideoRecorder:
     def start(self, x: int, y: int, w: int, h: int, fps: int):
         self._video_writer = cv2.VideoWriter(
             self._output,
-            cv2.VideoWriter_fourcc(*"mp4v"),
+            cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
             fps,
             (w, h),
         )

@@ -142,19 +142,14 @@ unsigned int SimpleCapture::StartCapture(
 
 unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
 {
-    if (m_buffer != buffer || m_size != size) {
-        m_buffer = buffer;
-        m_size = size;
-        // make sure a frame has been written, but we don't wait for OnFrameArrived every time
-        // since DirectX only calls OnFrameArrived when the frame has changed, and we don't want
-        // this call to block if the frame has not changed.
-        int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
-        if (hr == WAIT_TIMEOUT) {
-            printf("timeout waiting for FrameArrived event\n");
-            return 0;
-        }
+    m_buffer = buffer;
+    m_size = size;
+    // make sure a frame has been written.
+    int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
+    if (hr == WAIT_TIMEOUT) {
+        printf("timeout waiting for FrameArrived event\n");
+        return 0;
     }
- 
     return m_frameTime;
 }
 

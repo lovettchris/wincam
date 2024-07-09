@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 # our native bits.
 /wincam/native/
+dist/

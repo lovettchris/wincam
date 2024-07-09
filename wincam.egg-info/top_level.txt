@@ -1,6 +1,5 @@
--p
+dist
 examples
-native
 src
 tests
 wincam

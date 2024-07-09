@@ -93,9 +93,9 @@ def main():
         desktop = DesktopWindow()
         x, y, w, h = desktop.find(pid)
 
-    with DXCamera(x, y, w, h) as cam:
+    with DXCamera(x, y, w, h, args.fps) as camera:
         while True:
-            frame, timestamp = cam.get_bgr_frame()
+            frame, timestamp = camera.get_bgr_frame()
             cv2.imshow("frame", frame)
             if cv2.waitKey(1) & 0xFF == 27:
                 break

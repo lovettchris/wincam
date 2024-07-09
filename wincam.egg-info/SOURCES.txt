@@ -1,5 +1,6 @@
 .gitignore
 LICENSE
+MANIFEST.in
 README.md
 pyproject.toml
 examples/mirror.py
@@ -17,3 +18,7 @@ wincam.egg-info/SOURCES.txt
 wincam.egg-info/dependency_links.txt
 wincam.egg-info/requires.txt
 wincam.egg-info/top_level.txt
+wincam/native/runtimes/x64/ScreenCapture.dll
+wincam/native/runtimes/x64/ScreenCapture.exp
+wincam/native/runtimes/x64/ScreenCapture.lib
+wincam/native/runtimes/x64/ScreenCapture.pdb
