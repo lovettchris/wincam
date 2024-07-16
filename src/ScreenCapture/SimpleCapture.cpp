@@ -371,32 +371,43 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
     }
 
     if (m_buffer) {
-        // Copy the cropped image out of the full monitor frame.
         char* ptr = m_buffer;
         char* src = reinterpret_cast<char*>(resource.pData);
         int x = m_bounds.left;
         int y = m_bounds.top;
         int w = (m_bounds.right - m_bounds.left);
         int h = m_bounds.bottom - m_bounds.top;
-        auto expectedSize = w * h * CHANNELS;
-        if (expectedSize != m_size) {
-			printf("buffer too small\n");
-			return;
-		}
 
-        int actualHeight = (int)desc.Height;
-        int xBytes = x * CHANNELS;
-        int targetRowBytes = w * CHANNELS;
-        int srcRowBytes = desc.Width * CHANNELS;
-        if (xBytes + targetRowBytes > srcRowBytes) {
-            targetRowBytes = srcRowBytes - xBytes;
-        }
-        src += (lBmpRowPitch * y); // skip to top row.
-        for (int row = y; row < actualHeight && row < y + h; row++){
-            ::memcpy(ptr, src + xBytes, targetRowBytes);
-            src += lBmpRowPitch;
-            ptr += targetRowBytes;
+        // Handle full screen with a single memcpy, technically it can 
+        // handle any height so long as it is full width and starting at top left.
+        if (x == 0 && y == 0 && w == desc.Width) 
+        {
+			::memcpy(ptr, src, min(m_size, captureSize));
 		}
+        else 
+        {
+            // Copy the cropped image out of the full monitor frame.
+            auto expectedSize = w * h * CHANNELS;
+            if (expectedSize != m_size) {
+                printf("buffer too small\n");
+                return;
+            }
+
+            int actualHeight = (int)desc.Height;
+            int xBytes = x * CHANNELS;
+            int targetRowBytes = w * CHANNELS;
+            int srcRowBytes = desc.Width * CHANNELS;
+            if (xBytes + targetRowBytes > srcRowBytes) {
+                targetRowBytes = srcRowBytes - xBytes;
+            }
+            src += (lBmpRowPitch * y); // skip to top row.
+            for (int row = y; row < actualHeight && row < y + h; row++) {
+                ::memcpy(ptr, src + xBytes, targetRowBytes);
+                src += lBmpRowPitch;
+                ptr += targetRowBytes;
+            }
+        }
+
         SetEvent(m_event);
     }
 
