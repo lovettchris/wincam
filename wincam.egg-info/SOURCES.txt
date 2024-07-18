@@ -3,6 +3,7 @@ LICENSE
 MANIFEST.in
 README.md
 pyproject.toml
+examples/common.py
 examples/mirror.py
 examples/video.py
 tests/test_throttle.py

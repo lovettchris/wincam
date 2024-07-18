@@ -42,13 +42,18 @@ class DesktopWindow:
         return (left, top, w, h)
 
     def _get_visible_window(self):
+        best_hwnd = -1
+        max_area = 0
         for hwnd in self.handles:
-            left, top, right, bottom = self.get_window_client_bounds(hwnd)
-            w = right - left
-            h = bottom - top
-            if w > 0 and h > 0:
-                return hwnd
-        return -1
+            visible = win32gui.IsWindowVisible(hwnd)
+            if not visible:
+                continue
+            _, _, w, h = self.get_window_client_bounds(hwnd)
+            area = w * h
+            if w > 0 and h > 0 and area > max_area:
+                max_area = area
+                best_hwnd = hwnd
+        return best_hwnd
 
     def find_window_by_title(self, title: str) -> int:
         for i in range(len(self.handles)):
