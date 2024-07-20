@@ -80,6 +80,7 @@ namespace util {
         winrt::check_hresult(surfaceInterop->QueryInterface(winrt::guid_of<winrt::Windows::UI::Composition::ICompositionSurface>(), winrt::put_abi(surface)));
         return surface;
     }
+
 }
 
 // since we are requesting B8G8R8A8UIntNormalized
@@ -99,11 +100,12 @@ SimpleCapture::SimpleCapture()
     InitializeCriticalSection(&m_mutex);
 }
 
-unsigned int SimpleCapture::StartCapture(
+int SimpleCapture::StartCapture(
     winrt::IDirect3DDevice const& device,
     winrt::GraphicsCaptureItem const& item,
     winrt::DirectXPixelFormat pixelFormat,
-    RECT bounds)
+    RECT bounds,
+    bool captureCursor)
 {
     m_frameId = 0;
     m_buffer = nullptr;
@@ -132,6 +134,21 @@ unsigned int SimpleCapture::StartCapture(
     // it on the UI thread. 
     m_framePool = winrt::Direct3D11CaptureFramePool::CreateFreeThreaded(m_device, m_pixelFormat, 2, m_item.Size());
     m_session = m_framePool.CreateCaptureSession(m_item);
+    if (!m_session.IsSupported())
+    {
+        printf("CreateCaptureSession is not supported on this version of Windows.\n");
+        return -1;
+    }
+    m_session.IsCursorCaptureEnabled(captureCursor);
+
+    auto session3 = m_session.as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession3>();
+    if (session3 != nullptr) {
+        session3.IsBorderRequired(false);
+    }
+    else {
+        printf("Cannot disable the capture border on this version of windows\n");
+    }
+
     m_lastSize = m_item.Size();
     m_frameArrivedToken = m_framePool.FrameArrived({ this, &SimpleCapture::OnFrameArrived });
 
@@ -232,7 +249,7 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
         __uuidof(wicFactory),
         wicFactory.put_void());
     if (FAILED(hr)) {
-        printf("Failed to create instance of WICImagingFactory");
+        printf("Failed to create instance of WICImagingFactory\n");
         return;
     }
 
@@ -242,7 +259,7 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
         nullptr,
         wicEncoder.put());
     if (FAILED(hr)) {
-        printf("Failed to create BMP encoder");
+        printf("Failed to create BMP encoder\n");
         return;
     }
 
@@ -255,7 +272,7 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
 
     hr = wicStream->InitializeFromFilename(L"d:\\temp\\test.bmp", GENERIC_WRITE);
     if (FAILED(hr)) {
-        printf("Failed to initialize stream from file name");
+        printf("Failed to initialize stream from file name\n");
         return;
     }
 
@@ -270,13 +287,13 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
         winrt::com_ptr<IWICBitmapFrameEncode> frameEncode;
         wicEncoder->CreateNewFrame(frameEncode.put(), nullptr);
         if (FAILED(hr)) {
-            printf("Failed to create IWICBitmapFrameEncode");
+            printf("Failed to create IWICBitmapFrameEncode\n");
             return;
         }
 
         hr = frameEncode->Initialize(nullptr);
         if (FAILED(hr)) {
-            printf("Failed to initialize IWICBitmapFrameEncode");
+            printf("Failed to initialize IWICBitmapFrameEncode\n");
             return;
         }
 
@@ -284,13 +301,13 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
 
         hr = frameEncode->SetPixelFormat(&wicFormatGuid);
         if (FAILED(hr)) {
-            printf("SetPixelFormat failed.");
+            printf("SetPixelFormat failed.\n");
             return;
         }
 
         hr = frameEncode->SetSize(desc.Width, desc.Height);
         if (FAILED(hr)) {
-            printf("SetSize(...) failed.");
+            printf("SetSize(...) failed.\n");
             return;
         }
 
@@ -300,19 +317,19 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
             desc.Height * stride,
             reinterpret_cast<BYTE*>(pixels));
         if (FAILED(hr)) {
-            printf("frameEncode->WritePixels(...) failed.");
+            printf("frameEncode->WritePixels(...) failed.\n");
         }
 
         hr = frameEncode->Commit();
         if (FAILED(hr)) {
-            printf("Failed to commit frameEncode");
+            printf("Failed to commit frameEncode\n");
             return;
         }
     }
 
     hr = wicEncoder->Commit();
     if (FAILED(hr)) {
-        printf("Failed to commit encoder");
+        printf("Failed to commit encoder\n");
         return;
     }
 }

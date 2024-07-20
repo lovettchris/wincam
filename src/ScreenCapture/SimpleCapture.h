@@ -8,11 +8,12 @@ public:
     SimpleCapture();
     ~SimpleCapture() { Close(); }
 
-    unsigned int StartCapture(
+    int StartCapture(
         winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice const& device,
         winrt::Windows::Graphics::Capture::GraphicsCaptureItem const& item,
         winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixelFormat,
-        RECT bounds);
+        RECT bounds,
+        bool captureCursor);
 
     void Close();
 

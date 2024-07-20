@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: wincam
-Version: 0.0.4
+Version: 0.0.5
 Summary: A Python high-performance screenshot library for Windows 10+ using Direct3D11CaptureFramePool.
 Author: lovettchris
 Project-URL: Homepage, https://github.com/lovettchris/wincam

@@ -18,7 +18,7 @@ class DXCamera(Camera):
     which is based on Direct3D11CaptureFramePool.  Only one DXCamera can be activate at a time.
     See https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool"""
 
-    def __init__(self, left: int, top: int, width: int, height: int, fps: int = 30):
+    def __init__(self, left: int, top: int, width: int, height: int, fps: int = 30, capture_cursor: bool = True):
         super().__init__()
         if os.name != "nt":
             raise Exception("This class only works on Windows")
@@ -27,6 +27,7 @@ class DXCamera(Camera):
         self._height = height
         self._left = left
         self._top = top
+        self._capture_cursor = capture_cursor
         self._throttle = FpsThrottle(fps)
         full_path = os.path.realpath(os.path.join(script_dir, "native", "runtimes", "x64", "ScreenCapture.dll"))
         if not os.path.exists(full_path):
@@ -52,7 +53,7 @@ class DXCamera(Camera):
 
     def get_bgr_frame(self) -> Tuple[np.ndarray, float]:
         if not self._started:
-            hr = self.lib.StartCapture(self._left, self._top, self._width, self._height)
+            hr = self.lib.StartCapture(self._left, self._top, self._width, self._height, self._capture_cursor)
             if hr <= 0:
                 raise Exception(f"Failed to start capture, error code {f'{-hr:02x}'}")
             self._size = hr

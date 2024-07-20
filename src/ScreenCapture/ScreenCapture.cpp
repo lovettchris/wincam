@@ -102,7 +102,7 @@ extern "C" {
         return 0;
     }
 
-    int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height)
+    int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height, bool captureCursor)
     {
         auto mon = FindMonitor(x, y, width, height, false);
         if (mon.hmon == nullptr)
@@ -126,7 +126,7 @@ extern "C" {
 
             RECT bounds = { mon.x, mon.y, mon.x + width, mon.y + height };
             m_capture = std::make_unique<SimpleCapture>();
-            return m_capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds);
+            return m_capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);
 
         }
         catch (winrt::hresult_error const& ex) {
