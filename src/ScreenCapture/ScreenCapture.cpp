@@ -35,7 +35,7 @@ inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
     return item;
 }
 
-class EnumInfo 
+class EnumInfo
 {
 public:
     HMONITOR hmon;
@@ -43,17 +43,18 @@ public:
     int y;
     int w;
     int h;
+    bool verbose;
 };
 
-inline EnumInfo FindMonitor(int x, int y, int width, int height) {
+inline EnumInfo FindMonitor(int x, int y, int width, int height, bool verbose) {
 
-    EnumInfo result{NULL, x, y, width, height};
+    EnumInfo result{NULL, x, y, width, height, verbose};
     EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam)
         {
             EnumInfo* info = (EnumInfo*)lparam;
             MONITORINFOEX monitorInfo = { sizeof(monitorInfo) };
             GetMonitorInfo(hmon, &monitorInfo);
-            if (monitorInfo.rcMonitor.left <= info->x && monitorInfo.rcMonitor.right >= info->x + info->w && 
+            if (monitorInfo.rcMonitor.left <= info->x && monitorInfo.rcMonitor.right >= info->x + info->w &&
                 monitorInfo.rcMonitor.top <= info->y && monitorInfo.rcMonitor.bottom >= info->y + info->h)
 			{
 				info->hmon = hmon;
@@ -61,6 +62,12 @@ inline EnumInfo FindMonitor(int x, int y, int width, int height) {
                 info->y -= monitorInfo.rcMonitor.top;
 				return FALSE;
 			}
+            if (info->verbose) {
+                printf("Found monitor at (%d, %d) size (%d x %d)\n",
+                    monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+                    monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+                    monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top);
+            }
             return TRUE;
         }, (LPARAM)& result);
 
@@ -97,10 +104,11 @@ extern "C" {
 
     int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height)
     {
-        auto mon = FindMonitor(x, y, width, height);
+        auto mon = FindMonitor(x, y, width, height, false);
         if (mon.hmon == nullptr)
         {
-            printf("Monitor not found that fully contains these bounds\n");
+            printf("Monitor not found that fully contains the bounds (%d, %d) (%d x %d)\n", x, y, width, height);
+            FindMonitor(x, y, width, height, true);
             return ERROR_MONITOR_NOT_FOUND;
         }
 

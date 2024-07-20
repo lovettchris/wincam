@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args":[
-                "--process", "5360"
+                "--point", "400,400"
             ]
         }
     ]
