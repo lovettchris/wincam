@@ -22,7 +22,6 @@ namespace winrt
     using namespace Windows::UI::Composition;
 }
 
-
 namespace util {
 
     struct __declspec(uuid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1"))
@@ -92,7 +91,7 @@ class CriticalSectionGuard
 {
 public:
     CriticalSectionGuard() { EnterCriticalSection(&m_mutex); }
-	~CriticalSectionGuard() { LeaveCriticalSection(&m_mutex); }
+    ~CriticalSectionGuard() { LeaveCriticalSection(&m_mutex); }
 };
 
 SimpleCapture::SimpleCapture()
@@ -107,6 +106,8 @@ int SimpleCapture::StartCapture(
     RECT bounds,
     bool captureCursor)
 {
+    printf("StartCapture: Initializing capture...\n");
+
     m_frameId = 0;
     m_buffer = nullptr;
     m_size = 0;
@@ -121,41 +122,51 @@ int SimpleCapture::StartCapture(
     auto height = m_bounds.bottom - m_bounds.top;
     uint32_t size = width * height * CHANNELS;
 
-    m_d3dDevice = util::GetDXGIInterfaceFromObject<ID3D11Device>(m_device);
-    m_d3dDevice->GetImmediateContext(m_d3dContext.put());
+    try {
+        m_d3dDevice = util::GetDXGIInterfaceFromObject<ID3D11Device>(m_device);
+        printf("StartCapture: Created DXGI interface from device.\n");
 
-    m_swapChain = util::CreateDXGISwapChain(m_d3dDevice, static_cast<uint32_t>(m_item.Size().Width), static_cast<uint32_t>(m_item.Size().Height),
-        static_cast<DXGI_FORMAT>(m_pixelFormat), 2);
+        m_d3dDevice->GetImmediateContext(m_d3dContext.put());
+        printf("StartCapture: Obtained immediate context.\n");
 
-    // Creating our frame pool with 'Create' instead of 'CreateFreeThreaded'
-    // means that the frame pool's FrameArrived event is called on the thread
-    // the frame pool was created on. This also means that the creating thread
-    // must have a DispatcherQueue. If you use this method, it's best not to do
-    // it on the UI thread. 
-    m_framePool = winrt::Direct3D11CaptureFramePool::CreateFreeThreaded(m_device, m_pixelFormat, 2, m_item.Size());
-    m_session = m_framePool.CreateCaptureSession(m_item);
-    if (!m_session.IsSupported())
-    {
-        printf("CreateCaptureSession is not supported on this version of Windows.\n");
-        return -1;
+        m_swapChain = util::CreateDXGISwapChain(m_d3dDevice, static_cast<uint32_t>(m_item.Size().Width), static_cast<uint32_t>(m_item.Size().Height),
+            static_cast<DXGI_FORMAT>(m_pixelFormat), 2);
+        printf("StartCapture: Created DXGI swap chain.\n");
+
+        m_framePool = winrt::Direct3D11CaptureFramePool::CreateFreeThreaded(m_device, m_pixelFormat, 2, m_item.Size());
+        m_session = m_framePool.CreateCaptureSession(m_item);
+        printf("StartCapture: Created frame pool and capture session.\n");
+
+        if (!m_session.IsSupported())
+        {
+            printf("StartCapture: CreateCaptureSession is not supported on this version of Windows.\n");
+            return -1;
+        }
+        m_session.IsCursorCaptureEnabled(captureCursor);
+
+        auto session3 = m_session.try_as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession3>();
+        if (session3) {
+            session3.IsBorderRequired(false);
+            printf("StartCapture: Disabled capture border.\n");
+        }
+        else {
+            printf("StartCapture: IGraphicsCaptureSession3 not available. Cannot disable capture border.\n");
+        }
+
+        m_lastSize = m_item.Size();
+        m_frameArrivedToken = m_framePool.FrameArrived({ this, &SimpleCapture::OnFrameArrived });
+        printf("StartCapture: Frame arrived event handler set.\n");
+
+        m_session.StartCapture();
+        printf("StartCapture: Capture session started.\n");
     }
-    m_session.IsCursorCaptureEnabled(captureCursor);
-
-    auto session3 = m_session.as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession3>();
-    if (session3 != nullptr) {
-        session3.IsBorderRequired(false);
+    catch (winrt::hresult_error const& ex) {
+        int hr = (int)(ex.code());
+        printf("StartCapture: Capture initialization failed with HRESULT: %ld, Message: %ws\n", hr, ex.message().c_str());
+        return hr;
     }
-    else {
-        printf("Cannot disable the capture border on this version of windows\n");
-    }
-
-    m_lastSize = m_item.Size();
-    m_frameArrivedToken = m_framePool.FrameArrived({ this, &SimpleCapture::OnFrameArrived });
-
-    m_session.StartCapture();
     return size;
 }
-
 
 unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
 {
@@ -397,11 +408,11 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
 
         // Handle full screen with a single memcpy, technically it can 
         // handle any height so long as it is full width and starting at top left.
-        if (x == 0 && y == 0 && w == desc.Width) 
+        if (x == 0 && y == 0 && w == desc.Width)
         {
-			::memcpy(ptr, src, min(m_size, captureSize));
-		}
-        else 
+            ::memcpy(ptr, src, min(m_size, captureSize));
+        }
+        else
         {
             // Copy the cropped image out of the full monitor frame.
             auto expectedSize = w * h * CHANNELS;

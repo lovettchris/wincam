@@ -1,9 +1,6 @@
-// ScreenCapture.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
 #include <pch.h>
 #include <iostream>
 #include <stdio.h>
-
 #include <winrt/Windows.Graphics.Capture.h>
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.capture.h>
@@ -24,7 +21,6 @@ extern "C"
 {
     HRESULT __stdcall CreateDirect3D11DeviceFromDXGIDevice(::IDXGIDevice* dxgiDevice,
         ::IInspectable** graphicsDevice);
-
 }
 
 inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
@@ -48,7 +44,7 @@ public:
 
 inline EnumInfo FindMonitor(int x, int y, int width, int height, bool verbose) {
 
-    EnumInfo result{NULL, x, y, width, height, verbose};
+    EnumInfo result{ NULL, x, y, width, height, verbose };
     EnumDisplayMonitors(nullptr, nullptr, [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam)
         {
             EnumInfo* info = (EnumInfo*)lparam;
@@ -56,12 +52,12 @@ inline EnumInfo FindMonitor(int x, int y, int width, int height, bool verbose) {
             GetMonitorInfo(hmon, &monitorInfo);
             if (monitorInfo.rcMonitor.left <= info->x && monitorInfo.rcMonitor.right >= info->x + info->w &&
                 monitorInfo.rcMonitor.top <= info->y && monitorInfo.rcMonitor.bottom >= info->y + info->h)
-			{
-				info->hmon = hmon;
+            {
+                info->hmon = hmon;
                 info->x -= monitorInfo.rcMonitor.left;
                 info->y -= monitorInfo.rcMonitor.top;
-				return FALSE;
-			}
+                return FALSE;
+            }
             if (info->verbose) {
                 printf("Found monitor at (%d, %d) size (%d x %d)\n",
                     monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
@@ -69,7 +65,7 @@ inline EnumInfo FindMonitor(int x, int y, int width, int height, bool verbose) {
                     monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top);
             }
             return TRUE;
-        }, (LPARAM)& result);
+        }, (LPARAM)&result);
 
     return result;
 }
@@ -104,6 +100,8 @@ extern "C" {
 
     int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height, bool captureCursor)
     {
+        printf("StartCapture called with parameters: x=%d, y=%d, width=%d, height=%d, captureCursor=%d\n", x, y, width, height, captureCursor);
+
         auto mon = FindMonitor(x, y, width, height, false);
         if (mon.hmon == nullptr)
         {
@@ -116,22 +114,35 @@ extern "C" {
             StopCapture();
             winrt::com_ptr<ID3D11Device> d3dDevice;
             HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d3dDevice.put(), nullptr, nullptr);
-            winrt::check_hresult(hr);
+            if (FAILED(hr)) {
+                printf("D3D11CreateDevice failed with HRESULT: %ld\n", hr);
+                return hr;
+            }
+            printf("D3D11CreateDevice succeeded.\n");
 
             auto dxgiDevice = d3dDevice.as<IDXGIDevice>();
+            printf("Created IDXGIDevice.\n");
+
             auto device = CreateDirect3DDevice(dxgiDevice.get());
+            printf("Created Direct3DDevice.\n");
 
             winrt::GraphicsCaptureItem item{ nullptr };
             item = CreateCaptureItemForMonitor(mon.hmon);
+            if (!item) {
+                printf("CreateCaptureItemForMonitor failed.\n");
+                return -1;
+            }
+            printf("CreateCaptureItemForMonitor succeeded.\n");
 
             RECT bounds = { mon.x, mon.y, mon.x + width, mon.y + height };
             m_capture = std::make_unique<SimpleCapture>();
+            printf("Starting capture with bounds: (%d, %d) to (%d, %d)\n", bounds.left, bounds.top, bounds.right, bounds.bottom);
             return m_capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);
 
         }
         catch (winrt::hresult_error const& ex) {
             int hr = (int)(ex.code());
-            printf("Capture failed %d\n", hr);
+            printf("Capture failed with HRESULT: %ld, Message: %ws\n", hr, ex.message().c_str());
             return hr;
         }
         return 0;
