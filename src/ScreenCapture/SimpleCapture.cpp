@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SimpleCapture.h"
+#include "Errors.h"
 
 #include <winrt/Windows.Graphics.Capture.h>
 #include <windows.graphics.capture.interop.h>
@@ -136,16 +137,16 @@ int SimpleCapture::StartCapture(
     m_session = m_framePool.CreateCaptureSession(m_item);
     if (!m_session.IsSupported())
     {
-        printf("CreateCaptureSession is not supported on this version of Windows.\n");
-        return -1;
+        throw std::exception("CreateCaptureSession is not supported on this version of Windows.\n");
     }
     m_session.IsCursorCaptureEnabled(captureCursor);
 
-    auto session3 = m_session.as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession3>();
-    if (session3 != nullptr) {
+    auto session3 = m_session.try_as<winrt::Windows::Graphics::Capture::IGraphicsCaptureSession3>();
+    if (session3) {
         session3.IsBorderRequired(false);
     }
-    else {
+    else 
+    {
         printf("Cannot disable the capture border on this version of windows\n");
     }
 

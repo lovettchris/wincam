@@ -181,6 +181,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClCompile Include="SimpleCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Errors.h" />
     <ClInclude Include="ScreenCapture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="pch.h" />

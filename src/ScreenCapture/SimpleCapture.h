@@ -39,7 +39,7 @@ private:
     winrt::com_ptr<IDXGISwapChain1> m_swapChain{ nullptr };
     winrt::com_ptr<ID3D11Device> m_d3dDevice{ nullptr };
     winrt::com_ptr<ID3D11DeviceContext> m_d3dContext{ nullptr };
-    winrt::Windows::Graphics::DirectX::DirectXPixelFormat m_pixelFormat;
+    winrt::Windows::Graphics::DirectX::DirectXPixelFormat m_pixelFormat = winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized;
 
     bool m_closed = false;
     winrt::event_token m_frameArrivedToken;

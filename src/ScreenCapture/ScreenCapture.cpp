@@ -9,6 +9,7 @@
 #include <windows.graphics.capture.h>
 #include <winrt/windows.graphics.directx.direct3d11.h>
 #include "SimpleCapture.h"
+#include "Errors.h"
 
 namespace winrt
 {
@@ -31,7 +32,8 @@ inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
 {
     auto interop_factory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem item = { nullptr };
-    winrt::check_hresult(interop_factory->CreateForMonitor(hmon, winrt::guid_of<ABI::Windows::Graphics::Capture::IGraphicsCaptureItem>(), winrt::put_abi(item)));
+    int hr = interop_factory->CreateForMonitor(hmon, winrt::guid_of<ABI::Windows::Graphics::Capture::IGraphicsCaptureItem>(), winrt::put_abi(item));
+    debug_hresult(L"CreateForMonitor", hr);
     return item;
 }
 
@@ -77,7 +79,8 @@ inline EnumInfo FindMonitor(int x, int y, int width, int height, bool verbose) {
 inline auto CreateDirect3DDevice(IDXGIDevice* dxgi_device)
 {
     winrt::com_ptr<::IInspectable> d3d_device;
-    winrt::check_hresult(CreateDirect3D11DeviceFromDXGIDevice(dxgi_device, d3d_device.put()));
+    int hr = CreateDirect3D11DeviceFromDXGIDevice(dxgi_device, d3d_device.put());
+    debug_hresult(L"CreateDirect3D11DeviceFromDXGIDevice", hr);
     return d3d_device.as<winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice>();
 }
 
@@ -104,19 +107,19 @@ extern "C" {
 
     int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height, bool captureCursor)
     {
-        auto mon = FindMonitor(x, y, width, height, false);
-        if (mon.hmon == nullptr)
-        {
-            printf("Monitor not found that fully contains the bounds (%d, %d) (%d x %d)\n", x, y, width, height);
-            FindMonitor(x, y, width, height, true);
-            return ERROR_MONITOR_NOT_FOUND;
-        }
-
         try {
+            auto mon = FindMonitor(x, y, width, height, false);
+            if (mon.hmon == nullptr)
+            {
+                printf("Monitor not found that fully contains the bounds (%d, %d) (%d x %d)\n", x, y, width, height);
+                FindMonitor(x, y, width, height, true);
+                return ERROR_MONITOR_NOT_FOUND;
+            }
+
             StopCapture();
             winrt::com_ptr<ID3D11Device> d3dDevice;
             HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d3dDevice.put(), nullptr, nullptr);
-            winrt::check_hresult(hr);
+            debug_hresult(L"D3D11CreateDevice", hr);
 
             auto dxgiDevice = d3dDevice.as<IDXGIDevice>();
             auto device = CreateDirect3DDevice(dxgiDevice.get());
@@ -126,13 +129,18 @@ extern "C" {
 
             RECT bounds = { mon.x, mon.y, mon.x + width, mon.y + height };
             m_capture = std::make_unique<SimpleCapture>();
-            return m_capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);
-
+            int size = m_capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);
+            return size;
         }
         catch (winrt::hresult_error const& ex) {
             int hr = (int)(ex.code());
-            printf("Capture failed %d\n", hr);
+            debug_hresult(ex.message().c_str(), hr, false);
             return hr;
+        }
+        catch (std::exception const& se) {
+            std::wstring msg = to_utf16(se.what());
+            debug_hresult(msg.c_str(), E_FAIL, false);
+            return E_FAIL;
         }
         return 0;
     }
