@@ -48,7 +48,7 @@ class VideoRecorder:
     def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int):
         index = 0
         print()
-        while True:
+        while self._stop:
             self.record_video(x, y, w, h, fps, seconds_per_video, index)
             index += 1
             if seconds_per_video == 0:
