@@ -19,6 +19,12 @@ def get_argument_parser():
         help="Name of video file to save (default 'video.mp4')",
         default="video.mp4",
     )
+    parser.add_argument(
+        "--seconds_per_video",
+        type=int,
+        default=0,
+        help="Break up the video into multiple files with this many seconds per video",
+    )
     return parser
 
 
@@ -34,27 +40,47 @@ class VideoRecorder:
         self._stop = False
         self._output = output
         self._video_writer: cv2.VideoWriter | None = None
-        self._frame_count = 0
         signal.signal(signal.SIGINT, self._signal_handler)
 
     def _signal_handler(self, sig, frame):
         self._stop = True
 
-    def video_thread(self, x: int, y: int, w: int, h: int, fps: int):
+    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int):
+        index = 0
+        print()
+        while True:
+            self.record_video(x, y, w, h, fps, seconds_per_video, index)
+            index += 1
+            if seconds_per_video == 0:
+                break
+
+    def record_video(self, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
+        filename = self._output
+        if index > 1:
+            filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
+
+        self._video_writer = cv2.VideoWriter(
+            filename,
+            cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
+            fps,
+            (w, h),
+        )
         steps = []
         timer = Timer()
+        frame_count =0
         with DXCamera(x, y, w, h, fps=fps) as camera:
             frame, timestamp = camera.get_bgr_frame()
             self._video_writer.write(frame)  # type: ignore
             camera.reset_throttle()
 
-            # do a 2 second warm up cycle to ensure video capture is warm
-            print()
-            timer.start()
-            while timer.ticks() < 2:
-                frame, timestamp = camera.get_bgr_frame()
+            if index == 0:
+                # do a 2 second warm up cycle to ensure video capture is warm
+                timer.start()
+                while timer.ticks() < 2:
+                    frame, timestamp = camera.get_bgr_frame()
 
-            print("Capturing...")
+            print(f"Recording {filename}...")
+            camera.reset_throttle()
             timer.start()
             step_timer = Timer()
 
@@ -62,38 +88,36 @@ class VideoRecorder:
                 step_timer.start()
                 frame, timestamp = camera.get_bgr_frame()
                 self._video_writer.write(frame)
-                self._frame_count += 1
+                frame_count += 1
                 steps += [step_timer.ticks()]
+                if max_seconds > 0 and timer.ticks() > max_seconds:
+                    break
 
-        min_step = min(steps)
-        max_step = max(steps)
-        avg_step = sum(steps) / len(steps)
-        print("Video saved to", self._output)
-        print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
+            self._video_writer.release()
+
+        if len(steps) > 0:
+            min_step = min(steps)
+            max_step = max(steps)
+            avg_step = sum(steps) / len(steps)
+            print("Video saved to", filename)
+            print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
 
         total = timer.ticks()
-        avg_fps = self._frame_count / total
-        print(f"Recorded {self._frame_count} frames at average fps {avg_fps}")
+        avg_fps = frame_count / total
+        print(f"Recorded {frame_count} frames at average fps {avg_fps}")
 
-        if avg_fps < fps * 0.9:
+        if index == 0 and avg_fps < fps * 0.9:
             print(f"The video writer could not keep up with the target {fps} fps so the video will play too fast.")
             print("Please try a smaller window or a lower target fps.")
 
-    def start(self, x: int, y: int, w: int, h: int, fps: int):
-        self._video_writer = cv2.VideoWriter(
-            self._output,
-            cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
-            fps,
-            (w, h),
-        )
-        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps))
+    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int):
+        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video))
         self._thread.start()
 
     def stop(self):
         self._stop = True
         if self._thread is not None:
             self._thread.join()
-        self._video_writer.release()
 
 
 def main():
@@ -124,7 +148,7 @@ def main():
         x, y, w, h = desktop.find(pid)
 
     recorder = VideoRecorder(args.output)
-    recorder.start(x, y, w, h, args.fps)
+    recorder.start(x, y, w, h, args.fps, args.seconds_per_video)
     input("Press ENTER to stop recording...")
     recorder.stop()
 
