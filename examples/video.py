@@ -56,7 +56,7 @@ class VideoRecorder:
 
     def record_video(self, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
         filename = self._output
-        if index > 1:
+        if index > 0:
             filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
 
         self._video_writer = cv2.VideoWriter(
@@ -89,7 +89,10 @@ class VideoRecorder:
                 frame, timestamp = camera.get_bgr_frame()
                 self._video_writer.write(frame)
                 frame_count += 1
-                steps += [step_timer.ticks()]
+                step_time = step_timer.ticks()
+                steps += [step_time]
+                if step_time > 1:
+                    print(f"frame {frame_count} took {step_time:.3f} seconds??")
                 if max_seconds > 0 and timer.ticks() > max_seconds:
                     break
 
