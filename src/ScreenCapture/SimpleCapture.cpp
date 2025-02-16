@@ -133,7 +133,7 @@ void SimpleCapture::StartCapture(
     // means that the frame pool's FrameArrived event is called on the thread
     // the frame pool was created on. This also means that the creating thread
     // must have a DispatcherQueue. If you use this method, it's best not to do
-    // it on the UI thread. 
+    // it on the UI thread.
     m_framePool = winrt::Direct3D11CaptureFramePool::CreateFreeThreaded(m_device, m_pixelFormat, 2, m_item.Size());
     m_session = m_framePool.CreateCaptureSession(m_item);
     if (!m_session.IsSupported())
@@ -146,7 +146,7 @@ void SimpleCapture::StartCapture(
     if (session3) {
         session3.IsBorderRequired(false);
     }
-    else 
+    else
     {
         printf("Cannot disable the capture border on this version of windows\n");
     }
@@ -156,7 +156,7 @@ void SimpleCapture::StartCapture(
     m_session.StartCapture();
 }
 
-bool SimpleCapture::WaitForFirstFrame(int timeout) 
+bool SimpleCapture::WaitForFirstFrame(int timeout)
 {
     auto hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     return hr == 0;
@@ -166,6 +166,9 @@ unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
 {
     m_buffer = buffer;
     m_size = size;
+    if (m_closed) {
+        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
+    }
     // make sure a frame has been written.
     int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
     if (hr == WAIT_TIMEOUT) {
@@ -179,11 +182,11 @@ void SimpleCapture::Close()
 {
     if (!m_closed)
     {
+        m_framePool.FrameArrived(m_frameArrivedToken); // Remove the handler
         CriticalSectionGuard guard;
         m_closed = true;
         m_size = 0;
         m_buffer = nullptr;
-        m_framePool.FrameArrived(m_frameArrivedToken); // Remove the handler
         m_session.Close();
         m_framePool.Close();
         m_framePool = nullptr;
@@ -220,19 +223,19 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         sourceTexture->GetDesc(&desc);
         auto width = Clamp(frameSize.Width, 0, desc.Width);
         auto height = Clamp(frameSize.Height, 0, desc.Height);
-        D3D11_BOX srcBox = { 
+        D3D11_BOX srcBox = {
             (UINT)Clamp((int32_t)m_bounds.left,0,  (UINT)width),
             (UINT)Clamp((int32_t)m_bounds.top, 0, (UINT)height),
-            0, 
+            0,
             (UINT)Clamp((int32_t)m_bounds.right, 0, (UINT)width),
             (UINT)Clamp((int32_t)m_bounds.bottom, 0, (UINT)height),
-            1 
+            1
         };
 
         // Then we need to crop by using CopySubresourceRegion
         desc.Usage = D3D11_USAGE_DEFAULT;
         desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-        desc.CPUAccessFlags = 0; 
+        desc.CPUAccessFlags = 0;
         desc.MiscFlags = 0;
         desc.Width = srcBox.right - srcBox.left;
         desc.Height = srcBox.bottom - srcBox.top;
