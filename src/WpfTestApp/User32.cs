@@ -259,6 +259,16 @@ public static class User32
         return new Point(p.X / factor, p.Y / factor);
     }
 
+    public static Point GetScreenCursorPos()
+    {
+        POINT pt;
+        if (GetCursorPos(out pt))
+        {
+            return new Point(pt.X, pt.Y);
+        }
+        return new Point(0, 0);
+    }
+
     public static bool GetCursorPos(nint hwnd, out Point lpPoint)
     {
         POINT pt;

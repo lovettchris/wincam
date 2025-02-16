@@ -9,7 +9,8 @@ namespace WpfTestApp
 {
     internal interface ICapture : IDisposable
     {
-        public void StartCapture(int w, int h);
+        public Task StartCapture(int x, int y, int timeout = 10000);
+
         public ImageSource CaptureImage();
     }
 }

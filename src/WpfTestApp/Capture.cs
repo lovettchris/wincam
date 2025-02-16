@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -18,12 +19,15 @@ namespace WpfTestApp
         byte[] buffer;
         int width;
         int height;
+        int stride;
+        uint captureHandle;
+        bool started;
 
         public Capture()
         {
         }
 
-        public void StartCapture(int x, int y)
+        public async Task StartCapture(int x, int y, int timeout = 10000)
         {
             POINT pos = new POINT()
             {
@@ -39,21 +43,49 @@ namespace WpfTestApp
             int h = (int)bounds.Height;
             this.width = w;
             this.height = h;
-            uint expected = (uint)(w * h * 4);
-            int len = StartCapture(x, y, w, h, true);
-            if (expected != len)
+            this.stride = w * 4;
+            uint bufferSize = (uint)(w * h * 4); // B8G8R8A8UIntNormalized
+            Exception error = null;
+            this.captureHandle = CaptureNative.StartCapture(x, y, w, h, true);
+            this.started = true;
+
+            await Task.Run(() =>
             {
-                Debug.WriteLine($"StartCapture {len} instead of {expected}");
+                if (!CaptureNative.WaitForFirstFrame(this.captureHandle, timeout))
+                {
+                    error = new TimeoutException("Frames are not arriving");
+                }
+                else
+                {
+                    RECT capture = CaptureNative.GetCaptureBounds(this.captureHandle);
+                    Debug.WriteLine("Capturing bounds {capture");
+                    w = capture.Right - capture.Left;
+                    h = capture.Bottom - capture.Top;
+                    this.stride = w * 4;
+                    bufferSize = (uint)(w * h * 4); // B8G8R8A8UIntNormalized
+                } 
+            });
+            if (error != null)
+            {
+                throw new Exception($"StartCapture returned error: {error.Message}");
             }
-            this.buffer = new byte[len]; // B8G8R8A8UIntNormalized
+            this.buffer = new byte[bufferSize]; 
+        }
+
+        private void CheckStarted()
+        {
+            if (!this.started)
+            {
+                throw new Exception("Please call StartCapture first");
+            }
         }
 
         public ImageSource CaptureImage()
         {
-            var len = ReadNextFrame(this.buffer, (uint)this.buffer.Length);
+            CheckStarted();
+            var len = CaptureNative.ReadNextFrame(this.captureHandle, this.buffer, (uint)this.buffer.Length);
             if (len > 0)
             {
-                int stride = this.width * 4; // 4 bytes per pixel (B8G8R8A8)
                 return BitmapSource.Create(
                     this.width,
                     this.height,
@@ -62,7 +94,7 @@ namespace WpfTestApp
                     PixelFormats.Bgra32,
                     null,
                     buffer,
-                    stride
+                    this.stride
                 );
             }
             return null;
@@ -70,17 +102,32 @@ namespace WpfTestApp
 
         public void Dispose()
         {
-            StopCapture();
+            if (this.started)
+            {
+                CaptureNative.StopCapture(this.captureHandle);
+                this.started = false;
+            }
         }
 
-        [DllImport("ScreenCapture.dll")]
-        private static extern int StartCapture(int x, int y, int width, int height, bool captureCursor);
+    }
+
+    class CaptureNative
+    {
 
         [DllImport("ScreenCapture.dll")]
-        private static extern void StopCapture();
+        internal static extern uint StartCapture(int x, int y, int width, int height, bool captureCursor);
 
         [DllImport("ScreenCapture.dll")]
-        private static extern ulong ReadNextFrame(byte[] buffer, uint size);
+        internal static extern bool WaitForFirstFrame(uint handle, int timeout);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern RECT GetCaptureBounds(uint handle);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern void StopCapture(uint handle);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern ulong ReadNextFrame(uint handle, byte[] buffer, uint size);
 
     }
 }

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # project metadata
 [project]
 name = "wincam"
-version = "0.0.6"
+version = "1.0.1"
 authors = [
     {name = "lovettchris"}
 ]
@@ -19,9 +19,8 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: Microsoft :: Windows",
-    "Operating System :: Microsoft :: Windows :: Windows 8.1",
     "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
     "Topic :: Multimedia :: Graphics",
     "Topic :: Multimedia :: Graphics :: Capture",
     "Topic :: Multimedia :: Graphics :: Capture :: Screen Capture"

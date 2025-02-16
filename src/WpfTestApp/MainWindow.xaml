@@ -13,16 +13,25 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal">
+      <ToggleButton x:Name="PickWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnPickWindowChecked">PickWindow</ToggleButton>
       <Button x:Name="CaptureButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCapture">Capture</Button>
       <Button x:Name="StopButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnStop">Stop</Button>
+      <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
     </StackPanel>
     <Border Padding="10" Grid.Row="1" >
       <Image x:Name="CapturedImage" 
              HorizontalAlignment="Center"
              VerticalAlignment="Center"/>
     </Border>
-    <Border Grid.Row="2" Padding="5">
-      <TextBlock x:Name="StatusText" FontSize="14"/>
+    <Border Grid.Row="2" Padding="10,5">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText" FontSize="14"/>
+        <TextBlock x:Name="PositionText" FontSize="14" Grid.Column="1"/>
+      </Grid>
     </Border>
   </Grid>
 </Window>

@@ -1,6 +1,6 @@
 import numpy as np
 
-from .timer import Timer
+from wincam.timer import Timer
 
 
 class FpsThrottle:

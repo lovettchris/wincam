@@ -3,11 +3,9 @@ import ctypes
 import os
 import signal
 from threading import Thread
-from typing import List
 
 from common import add_common_args
 import cv2
-import numpy as np
 
 from wincam import DXCamera, Timer
 
@@ -36,8 +34,7 @@ class VideoRecorder:
         self._stop = False
         self._output = output
         self._video_writer: cv2.VideoWriter | None = None
-        self._frames: List[np.ndarray] = []
-        self._timer = Timer()
+        self._frame_count = 0
         signal.signal(signal.SIGINT, self._signal_handler)
 
     def _signal_handler(self, sig, frame):
@@ -45,24 +42,40 @@ class VideoRecorder:
 
     def video_thread(self, x: int, y: int, w: int, h: int, fps: int):
         steps = []
+        timer = Timer()
         with DXCamera(x, y, w, h, fps=fps) as camera:
             frame, timestamp = camera.get_bgr_frame()
             self._video_writer.write(frame)  # type: ignore
             camera.reset_throttle()
 
-            while not self._stop:
-                self._timer.start()
+            # do a 2 second warm up cycle to ensure video capture is warm
+            print()
+            timer.start()
+            while timer.ticks() < 2:
                 frame, timestamp = camera.get_bgr_frame()
-                self._frames += [frame]
+
+            print("Capturing...")
+            timer.start()
+            step_timer = Timer()
+
+            while not self._stop:
+                step_timer.start()
+                frame, timestamp = camera.get_bgr_frame()
                 self._video_writer.write(frame)
-                steps += [self._timer.ticks()]
+                self._frame_count += 1
+                steps += [step_timer.ticks()]
 
         min_step = min(steps)
         max_step = max(steps)
         avg_step = sum(steps) / len(steps)
         print("Video saved to", self._output)
         print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
-        if avg_step > fps * 1.1:
+
+        total = timer.ticks()
+        avg_fps = self._frame_count / total
+        print(f"Recorded {self._frame_count} frames at average fps {avg_fps}")
+
+        if avg_fps < fps * 0.9:
             print(f"The video writer could not keep up with the target {fps} fps so the video will play too fast.")
             print("Please try a smaller window or a lower target fps.")
 

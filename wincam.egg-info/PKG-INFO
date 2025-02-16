@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: wincam
-Version: 0.0.6
+Version: 1.0.1
 Summary: A Python high-performance screenshot library for Windows 10+ using Direct3D11CaptureFramePool.
 Author: lovettchris
 Project-URL: Homepage, https://github.com/lovettchris/wincam
@@ -8,9 +8,8 @@ Project-URL: Issues, https://github.com/lovettchris/wincam/issues
 Classifier: Intended Audience :: Developers
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
-Classifier: Operating System :: Microsoft :: Windows
-Classifier: Operating System :: Microsoft :: Windows :: Windows 8.1
 Classifier: Operating System :: Microsoft :: Windows :: Windows 10
+Classifier: Operating System :: Microsoft :: Windows :: Windows 11
 Classifier: Topic :: Multimedia :: Graphics
 Classifier: Topic :: Multimedia :: Graphics :: Capture
 Classifier: Topic :: Multimedia :: Graphics :: Capture :: Screen Capture
@@ -57,9 +56,9 @@ This is using a new Windows 10 API called
 [Direct3D11CaptureFramePool](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool?view=winrt-26100)
 which requires DirectX 11 and a GPU.
 
-To get the fastest time possible, this library is implemented in C++ and the C++ library copies each frame directly into
-a buffer provided by the python code. This C++ library is loaded into your python process. Only one instance of DXCamera
-can be used per python process.
+To get the fastest time possible, this library is implemented in C++ on the GPU using DirectX11 and the C++ library
+copies each frame directly into a buffer provided by the python code. This C++ library is loaded into your python
+process.
 
 ## Prerequisites
 

@@ -21,9 +21,9 @@ This is using a new Windows 10 API called
 [Direct3D11CaptureFramePool](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool?view=winrt-26100)
 which requires DirectX 11 and a GPU.
 
-To get the fastest time possible, this library is implemented in C++ and the C++ library copies each frame directly into
-a buffer provided by the python code. This C++ library is loaded into your python process. Only one instance of DXCamera
-can be used per python process.
+To get the fastest time possible, this library is implemented in C++ on the GPU using DirectX11 and the C++ library
+copies each frame directly into a buffer provided by the python code. This C++ library is loaded into your python
+process.
 
 ## Prerequisites
 

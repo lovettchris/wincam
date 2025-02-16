@@ -6,9 +6,11 @@
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.capture.h>
 #include <winrt/windows.graphics.directx.direct3d11.h>
+#include <windows.graphics.directx.direct3d11.interop.h>
 #include <windows.ui.composition.interop.h>
 #include <d2d1_1.h>
 #include <dxgi1_6.h>
+#include <d3d11.h>
 
 namespace winrt
 {
@@ -101,7 +103,7 @@ SimpleCapture::SimpleCapture()
     InitializeCriticalSection(&m_mutex);
 }
 
-int SimpleCapture::StartCapture(
+void SimpleCapture::StartCapture(
     winrt::IDirect3DDevice const& device,
     winrt::GraphicsCaptureItem const& item,
     winrt::DirectXPixelFormat pixelFormat,
@@ -116,6 +118,8 @@ int SimpleCapture::StartCapture(
     m_device = device;
     m_pixelFormat = pixelFormat;
     m_bounds = bounds;
+    m_croppedBounds = bounds;
+    m_captureBounds = bounds;
     m_timer.start();
 
     auto width = m_bounds.right - m_bounds.left;
@@ -124,9 +128,6 @@ int SimpleCapture::StartCapture(
 
     m_d3dDevice = util::GetDXGIInterfaceFromObject<ID3D11Device>(m_device);
     m_d3dDevice->GetImmediateContext(m_d3dContext.put());
-
-    m_swapChain = util::CreateDXGISwapChain(m_d3dDevice, static_cast<uint32_t>(m_item.Size().Width), static_cast<uint32_t>(m_item.Size().Height),
-        static_cast<DXGI_FORMAT>(m_pixelFormat), 2);
 
     // Creating our frame pool with 'Create' instead of 'CreateFreeThreaded'
     // means that the frame pool's FrameArrived event is called on the thread
@@ -150,13 +151,16 @@ int SimpleCapture::StartCapture(
         printf("Cannot disable the capture border on this version of windows\n");
     }
 
-    m_lastSize = m_item.Size();
     m_frameArrivedToken = m_framePool.FrameArrived({ this, &SimpleCapture::OnFrameArrived });
 
     m_session.StartCapture();
-    return size;
 }
 
+bool SimpleCapture::WaitForFirstFrame(int timeout) 
+{
+    auto hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
+    return hr == 0;
+}
 
 unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
 {
@@ -182,7 +186,6 @@ void SimpleCapture::Close()
         m_framePool.FrameArrived(m_frameArrivedToken); // Remove the handler
         m_session.Close();
         m_framePool.Close();
-        m_swapChain = nullptr;
         m_framePool = nullptr;
         m_session = nullptr;
         m_item = nullptr;
@@ -190,24 +193,10 @@ void SimpleCapture::Close()
     }
 }
 
-void SimpleCapture::ResizeSwapChain()
-{
-    winrt::check_hresult(m_swapChain->ResizeBuffers(2, static_cast<uint32_t>(m_lastSize.Width), static_cast<uint32_t>(m_lastSize.Height),
-        static_cast<DXGI_FORMAT>(m_pixelFormat), 0));
-}
-
-bool SimpleCapture::TryResizeSwapChain(winrt::Direct3D11CaptureFrame const& frame)
-{
-    auto const contentSize = frame.ContentSize();
-    if ((contentSize.Width != m_lastSize.Width) ||
-        (contentSize.Height != m_lastSize.Height))
-    {
-        // The thing we have been capturing has changed size, resize the swap chain to match.
-        m_lastSize = contentSize;
-        ResizeSwapChain();
-        return true;
-    }
-    return false;
+inline int32_t Clamp(int32_t x, int32_t min, int32_t max) {
+    if (x < min) x = min;
+    if (x > max) x = max;
+    return x;
 }
 
 void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& sender, winrt::IInspectable const&)
@@ -215,29 +204,56 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
     // mutex ensures we don't try and shut down this class while it is in the middle of handling a frame.
     CriticalSectionGuard guard;
     {
-        if (m_closed || m_size == 0) {
+        if (m_closed ) {
             return;
         }
     }
 
-    auto swapChainResizedToFrame = false;
     {
         auto frame = sender.TryGetNextFrame();
-        swapChainResizedToFrame = TryResizeSwapChain(frame);
+        auto frameSize = frame.ContentSize();
 
-        winrt::com_ptr<ID3D11Texture2D> backBuffer;
-        winrt::check_hresult(m_swapChain->GetBuffer(0, winrt::guid_of<ID3D11Texture2D>(), backBuffer.put_void()));
+        // get the d3d surface.
+        auto sourceTexture = util::GetDXGIInterfaceFromObject<ID3D11Texture2D>(frame.Surface());
 
-        auto surfaceTexture = util::GetDXGIInterfaceFromObject<ID3D11Texture2D>(frame.Surface());
-        m_d3dContext->CopyResource(backBuffer.get(), surfaceTexture.get());
+        D3D11_TEXTURE2D_DESC desc;
+        sourceTexture->GetDesc(&desc);
+        auto width = Clamp(frameSize.Width, 0, desc.Width);
+        auto height = Clamp(frameSize.Height, 0, desc.Height);
+        D3D11_BOX srcBox = { 
+            (UINT)Clamp((int32_t)m_bounds.left,0,  (UINT)width),
+            (UINT)Clamp((int32_t)m_bounds.top, 0, (UINT)height),
+            0, 
+            (UINT)Clamp((int32_t)m_bounds.right, 0, (UINT)width),
+            (UINT)Clamp((int32_t)m_bounds.bottom, 0, (UINT)height),
+            1 
+        };
 
-        ReadPixels(backBuffer.get());
+        // Then we need to crop by using CopySubresourceRegion
+        desc.Usage = D3D11_USAGE_DEFAULT;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+        desc.CPUAccessFlags = 0; 
+        desc.MiscFlags = 0;
+        desc.Width = srcBox.right - srcBox.left;
+        desc.Height = srcBox.bottom - srcBox.top;
+
+        m_croppedBounds.left = 0;
+        m_croppedBounds.top = 0;
+        m_croppedBounds.right = srcBox.right - srcBox.left;
+        m_croppedBounds.bottom = srcBox.bottom - srcBox.top;
+        m_captureBounds = m_croppedBounds;
+
+        winrt::com_ptr<ID3D11Texture2D> croppedTexture;
+        int hr = m_d3dDevice->CreateTexture2D(&desc, NULL, croppedTexture.put());
+        debug_hresult(L"CreateTexture2D", hr, true);
+
+        winrt::com_ptr<ID3D11DeviceContext> immediate;
+        m_d3dDevice->GetImmediateContext(immediate.put());
+        immediate->CopySubresourceRegion(croppedTexture.get(), 0, 0, 0, 0, sourceTexture.get(), 0, &srcBox);
+        ReadPixels(croppedTexture.get());
     }
 
-    if (swapChainResizedToFrame)
-    {
-        m_framePool.Recreate(m_device, m_pixelFormat, 2, m_lastSize);
-    }
+    SetEvent(m_event);
 }
 
 void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
@@ -354,7 +370,7 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
         return;
     }
 
-    desc.Usage = D3D11_USAGE_STAGING;
+    desc.Usage = D3D11_USAGE_STAGING; // A resource that supports data transfer (copy) from the GPU to the CPU.
     desc.BindFlags = 0;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
     if (desc.Format != DXGI_FORMAT_B8G8R8A8_UNORM) {
@@ -364,69 +380,43 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
 
     HRESULT hr = m_d3dDevice->CreateTexture2D(&desc, NULL, copiedImage.put());
     if (hr != S_OK) {
-        printf("failed to create texture\n");
-        return;
+        debug_hresult(L"failed to create texture", hr, true);
     }
 
     m_frameTime = static_cast<unsigned long long>(m_timer.microseconds());
+    // Copy the image out of the backbuffer.
     m_d3dContext->CopyResource(copiedImage.get(), acquiredDesktopImage);
 
     D3D11_MAPPED_SUBRESOURCE resource{};
     UINT subresource = D3D11CalcSubresource(0 /* slice */, 0 /* array slice */, 1 /* mip levels */); //  desc.MipLevels);
     m_d3dContext->ResolveSubresource(copiedImage.get(), subresource, acquiredDesktopImage, subresource, desc.Format);
-
     hr = m_d3dContext->Map(copiedImage.get(), subresource, D3D11_MAP_READ, 0, &resource);
     if (hr != S_OK) {
-        printf("failed to map texture\n");
-        return;
+        debug_hresult(L"failed to map texture", hr, true);
     }
 
-    UINT lBmpRowPitch = resource.RowPitch;
-    unsigned int captureSize = lBmpRowPitch * desc.Height;
+    UINT rowPitch = resource.RowPitch;
+    unsigned int captureSize = rowPitch * desc.Height;
 
     if (m_saveBitmap) {
-        SaveBitmap(reinterpret_cast<UCHAR*>(resource.pData), desc, lBmpRowPitch);
+        SaveBitmap(reinterpret_cast<UCHAR*>(resource.pData), desc, rowPitch);
+    }
+
+    int x = m_croppedBounds.left;
+    int y = m_croppedBounds.top;
+    int w = (m_croppedBounds.right - m_croppedBounds.left);
+    int h = m_croppedBounds.bottom - m_croppedBounds.top;
+    if (rowPitch != w * 4)
+    {
+        // ResolveSubresource returns a buffer that is 8 byte aligned (64 bit).
+        // Record this in the m_captureBounds so the caller can adjust their buffer accordingly.
+        m_captureBounds.right = rowPitch / 4;
     }
 
     if (m_buffer) {
         char* ptr = m_buffer;
         char* src = reinterpret_cast<char*>(resource.pData);
-        int x = m_bounds.left;
-        int y = m_bounds.top;
-        int w = (m_bounds.right - m_bounds.left);
-        int h = m_bounds.bottom - m_bounds.top;
-
-        // Handle full screen with a single memcpy, technically it can 
-        // handle any height so long as it is full width and starting at top left.
-        if (x == 0 && y == 0 && w == desc.Width) 
-        {
-			::memcpy(ptr, src, min(m_size, captureSize));
-		}
-        else 
-        {
-            // Copy the cropped image out of the full monitor frame.
-            auto expectedSize = w * h * CHANNELS;
-            if (expectedSize != m_size) {
-                printf("buffer too small\n");
-                return;
-            }
-
-            int actualHeight = (int)desc.Height;
-            int xBytes = x * CHANNELS;
-            int targetRowBytes = w * CHANNELS;
-            int srcRowBytes = desc.Width * CHANNELS;
-            if (xBytes + targetRowBytes > srcRowBytes) {
-                targetRowBytes = srcRowBytes - xBytes;
-            }
-            src += (lBmpRowPitch * y); // skip to top row.
-            for (int row = y; row < actualHeight && row < y + h; row++) {
-                ::memcpy(ptr, src + xBytes, targetRowBytes);
-                src += lBmpRowPitch;
-                ptr += targetRowBytes;
-            }
-        }
-
-        SetEvent(m_event);
+        ::memcpy(ptr, src, min(m_size, captureSize));
     }
 
     m_d3dContext->Unmap(copiedImage.get(), subresource);
