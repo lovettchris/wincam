@@ -38,6 +38,10 @@ class DXCamera(Camera):
             raise Exception(f"ScreenCapture.dll not found at: {full_path}")
         self.lib = ct.cdll.LoadLibrary(full_path)
         self.lib.GetCaptureBounds.restype = Rect
+        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.c_int, ct.c_int]
+        self.lib.EncodeVideo.restype = ct.c_uint32
+        self.lib.GetTicks.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
+        self.lib.GetTicks.restype = ct.c_uint32
         self._started = False
         self._buffer = None
         self._size = 0
@@ -61,7 +65,7 @@ class DXCamera(Camera):
     def get_bgr_frame(self) -> Tuple[np.ndarray, float]:
         if not self._started:
             self._handle = self.lib.StartCapture(self._left, self._top, self._width, self._height, self._capture_cursor)
-            if not self.lib.WaitForFirstFrame(self._handle, 10000):
+            if not self.lib.WaitForNextFrame(self._handle, 10000):
                 raise Exception("Frames are not being captured")
 
             self._capture_bounds = self.lib.GetCaptureBounds(self._handle)
@@ -85,8 +89,27 @@ class DXCamera(Camera):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame, timestamp
 
+    def encode_video(self, file_name: str, bit_rate: int = 9000000, frame_rate: int = 60):
+        self.get_bgr_frame()  # make sure we're getting frames.
+        full_path = os.path.realpath(file_name)
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+        self.lib.EncodeVideo(self._handle, full_path, bit_rate, frame_rate)
+
+    def stop_encoding(self):
+        self.lib.StopEncoding()
+
+    def get_video_ticks(self):
+        len = self.lib.GetTicks(None, 0)
+        if len > 0:
+            array = (ct.c_double * len)()
+            self.lib.GetTicks(array, len)
+            return list(array)
+        return []
+
     def stop(self):
         self._started = False
         self.lib.StopCapture(self._handle)
+        self.lib.StopEncoding()
         self._buffer = None
         self._handle = -1

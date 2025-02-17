@@ -1,25 +1,17 @@
 ﻿using SmartReplayApp.Utilities;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using WpfTestApp.Native;
+using System.IO;
 
 namespace WpfTestApp
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Interaction logic for MainWindow.xaml. 
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -71,6 +63,7 @@ namespace WpfTestApp
             }
             running = true;
             using var c = new Capture();
+            c.EncodingCompleted += OnEncodingCompleted;
             this.capture = c;
             List<int> averageFps = new List<int>();
             try
@@ -136,6 +129,22 @@ namespace WpfTestApp
             }
         }
 
+        private void OnEncodingCompleted(object sender, EncodingStats e)
+        {
+            var ticks = e.FrameTicks;
+            var data = string.Join(",", ticks);
+            var folder = System.IO.Path.GetDirectoryName(e.FileName);
+            var meta_file = System.IO.Path.GetFileNameWithoutExtension(e.FileName) + "_meta.json";
+            meta_file = Path.Combine(folder, meta_file);
+            File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "]}");
+            var min = ticks.Min();
+            var max = ticks.Max();
+            var avg = ticks.Average();
+            var msg = $"frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
+            Debug.WriteLine(msg);
+            ShowStatus(msg);
+        }
+
         private void OnStop(object sender, RoutedEventArgs e)
         {
             this.running = false;
@@ -147,6 +156,7 @@ namespace WpfTestApp
             CaptureButton.IsEnabled = this.x != -1;
             CaptureButton.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
             StopButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            EncodeButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
         }
 
         #region WindowMousePicker
@@ -213,5 +223,45 @@ namespace WpfTestApp
         {
             new MainWindow().Show();
         }
+
+        private void OnStopEncoding(object sender, RoutedEventArgs e)
+        {
+            if (this.capture != null)
+            {
+                this.capture.StopEncoding();
+            }
+        }
+
+        private void OnEncode(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog sd = new SaveFileDialog();
+            sd.Filter = ".mp4 files|*.mp4";
+            sd.CheckPathExists = true;
+            if (sd.ShowDialog() == true)
+            {
+                var file = sd.FileName;
+                if (this.capture != null)
+                {
+                    try
+                    {
+                        SafeDelete(file);
+                        this.capture.EncodeVideo(file);
+                    } 
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message, "Encode Video Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        private void SafeDelete(string file)
+        {
+            if (System.IO.File.Exists(file))
+            {
+                System.IO.File.Delete(file);
+            }
+        }
+
     }
 }

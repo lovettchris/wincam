@@ -4,12 +4,16 @@
 #include <iostream>
 #include <stdio.h>
 #include <mutex>
+#include <filesystem>
 
 #include <winrt/Windows.Graphics.Capture.h>
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.capture.h>
+#include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/windows.graphics.directx.direct3d11.h>
+#include <d3d11.h>
 #include "SimpleCapture.h"
+#include "VideoEncoder.h"
 #include "Errors.h"
 
 namespace winrt
@@ -22,12 +26,12 @@ namespace winrt
     using namespace Windows::System;
 }
 
-extern "C"
-{
-    HRESULT __stdcall CreateDirect3D11DeviceFromDXGIDevice(::IDXGIDevice* dxgiDevice,
-        ::IInspectable** graphicsDevice);
-
-}
+//extern "C"
+//{
+//    HRESULT __stdcall CreateDirect3D11DeviceFromDXGIDevice(::IDXGIDevice* dxgiDevice,
+//        ::IInspectable** graphicsDevice);
+//
+//}
 
 inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
 {
@@ -37,8 +41,6 @@ inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
     debug_hresult(L"CreateForMonitor", hr);
     return item;
 }
-
-typedef int CaptureHandle;
 
 class EnumInfo
 {
@@ -91,7 +93,7 @@ inline auto CreateDirect3DDevice(IDXGIDevice* dxgi_device)
 std::mutex m_list_lock;
 std::vector<std::shared_ptr<SimpleCapture>> m_captures;
 
-std::shared_ptr<SimpleCapture> get_capture(CaptureHandle h)
+std::shared_ptr<SimpleCapture> get_capture(unsigned int h)
 {
     std::shared_ptr<SimpleCapture> ptr;
     std::scoped_lock lock(m_list_lock);
@@ -101,7 +103,7 @@ std::shared_ptr<SimpleCapture> get_capture(CaptureHandle h)
     return ptr;
 }
 
-std::shared_ptr<SimpleCapture> remove_capture(CaptureHandle h)
+std::shared_ptr<SimpleCapture> remove_capture(unsigned int h)
 {
     std::shared_ptr<SimpleCapture> ptr;
     std::scoped_lock lock(m_list_lock);
@@ -110,7 +112,7 @@ std::shared_ptr<SimpleCapture> remove_capture(CaptureHandle h)
         m_captures[h] = nullptr;
         // trim the end of the list to remove any null pointers.
         while (m_captures.size() > 0) {
-            int last = m_captures.size() - 1;
+            auto last = m_captures.size() - 1;
             if (m_captures[last] == nullptr) {
                 m_captures.pop_back();
             }
@@ -123,7 +125,7 @@ std::shared_ptr<SimpleCapture> remove_capture(CaptureHandle h)
     return ptr;
 }
 
-CaptureHandle add_capture(std::shared_ptr<SimpleCapture> capture)
+unsigned int add_capture(std::shared_ptr<SimpleCapture> capture)
 {
     std::scoped_lock lock(m_list_lock);
     std::shared_ptr<SimpleCapture> ptr;
@@ -134,11 +136,32 @@ CaptureHandle add_capture(std::shared_ptr<SimpleCapture> capture)
         }
     }
     m_captures.push_back(capture);
-    return (CaptureHandle)(m_captures.size() - 1);
+    return (int)(m_captures.size() - 1);
+}
+
+VideoEncoder encoder; // PS: this means we can only do one at a time.
+
+static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shared_ptr<SimpleCapture> capture, const WCHAR* fullPath, unsigned int bitrateInBps, unsigned int frameRate)
+{
+    if (encoder.IsRunning()) {
+        throw new std::exception("Another encoder is running, you can encode one video at a time");
+    }
+    std::filesystem::path fsPath(fullPath);
+    auto path = fsPath.parent_path().wstring();
+    auto filename = fsPath.filename().wstring();
+
+    auto folder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(path);
+    auto file = co_await folder.CreateFileAsync(filename);
+    auto stream = co_await file.OpenAsync(winrt::Windows::Storage::FileAccessMode::ReadWrite);
+
+    int rc = 0;
+    auto result = encoder.EncodeAsync(capture, bitrateInBps, frameRate, stream);
+    rc = co_await result;
+    co_return rc;
 }
 
 extern "C" {
-    void __declspec(dllexport) __stdcall StopCapture(CaptureHandle h)
+    void __declspec(dllexport) __stdcall StopCapture(unsigned int h)
     {
         std::shared_ptr<SimpleCapture> ptr = remove_capture(h);
         if (ptr != nullptr) {
@@ -146,7 +169,7 @@ extern "C" {
         }
     }
 
-    unsigned long long __declspec(dllexport) __stdcall ReadNextFrame(CaptureHandle h, char* buffer, unsigned int size)
+    double __declspec(dllexport) __stdcall ReadNextFrame(unsigned int h, char* buffer, unsigned int size)
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(h);
         if (ptr != nullptr) {
@@ -155,16 +178,16 @@ extern "C" {
         return 0;
     }
     
-    bool  __declspec(dllexport) __stdcall WaitForFirstFrame(CaptureHandle h, int timeout)
+    bool  __declspec(dllexport) __stdcall WaitForNextFrame(unsigned int h, int timeout)
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(h);
         if (ptr != nullptr) {
-            return ptr->WaitForFirstFrame(timeout);
+            return ptr->WaitForNextFrame(timeout);
         }
         return false;
     }
 
-    RECT  __declspec(dllexport) __stdcall GetCaptureBounds(CaptureHandle h)
+    RECT  __declspec(dllexport) __stdcall GetCaptureBounds(unsigned int h)
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(h);
         if (ptr != nullptr) {
@@ -174,7 +197,7 @@ extern "C" {
         return RECT{};
     }
 
-    CaptureHandle __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height, bool captureCursor)
+    unsigned int __declspec(dllexport) __stdcall StartCapture(int x, int y, int width, int height, bool captureCursor)
     {
         try {
             auto mon = FindMonitor(x, y, width, height, false);
@@ -210,4 +233,27 @@ extern "C" {
         }
         return -1;
     }
+
+    int __declspec(dllexport) __stdcall  EncodeVideo(unsigned int captureHandle, const WCHAR* fullPath, unsigned int bitrateInBps, unsigned int frameRate)
+    {
+        int rc = 0;
+        std::wstring saved(fullPath);
+        std::shared_ptr<SimpleCapture> ptr = get_capture(captureHandle);
+        if (ptr != nullptr) {
+            rc = RunEncodeVideo(ptr, saved.c_str(), bitrateInBps, frameRate).get();
+        }
+        return rc;
+    }
+
+    int __declspec(dllexport) __stdcall WINAPI StopEncoding()
+    {
+        encoder.Stop();
+        return 0;
+    }
+
+    unsigned int __declspec(dllexport) __stdcall  WINAPI GetTicks(double* buffer, unsigned int size)
+    {
+        return encoder.GetTicks(buffer, size);
+    }
+
 }

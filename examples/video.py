@@ -1,8 +1,10 @@
 import argparse
 import ctypes
+import json
 import os
 import signal
 from threading import Thread
+from typing import List
 
 from common import add_common_args
 import cv2
@@ -25,6 +27,7 @@ def get_argument_parser():
         default=0,
         help="Break up the video into multiple files with this many seconds per video",
     )
+    parser.add_argument("--native", help="use GPU provided video encoder", action="store_true")
     return parser
 
 
@@ -37,6 +40,7 @@ def parse_handle(hwnd) -> int:
 class VideoRecorder:
     def __init__(self, output: str = "video.mp4"):
         self._thread: Thread | None = None
+        self._monitor: Thread | None = None
         self._stop = False
         self._output = output
         self._video_writer: cv2.VideoWriter | None = None
@@ -45,20 +49,66 @@ class VideoRecorder:
     def _signal_handler(self, sig, frame):
         self._stop = True
 
-    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int):
+    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool):
         index = 0
         print()
         while not self._stop:
-            self.record_video(x, y, w, h, fps, seconds_per_video, index)
+            filename = self._output
+            if index > 0:
+                filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
+            if native:
+                self.native_encoder(filename, x, y, w, h, fps, seconds_per_video, index)
+            else:
+                self.record_video(filename, x, y, w, h, fps, seconds_per_video, index)
+
             index += 1
             if seconds_per_video == 0:
                 break
 
-    def record_video(self, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
-        filename = self._output
-        if index > 0:
-            filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
+    def native_encoder(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
+        timer = Timer()
+        with DXCamera(x, y, w, h, fps=fps) as camera:
+            frame, timestamp = camera.get_bgr_frame()
+            if index == 0:
+                # do a 2 second warm up cycle to ensure video capture is warm
+                timer.start()
+                while timer.ticks() < 2:
+                    frame, timestamp = camera.get_bgr_frame()
+            print(f"Recording {filename}...")
 
+            self._monitor = Thread(target=lambda: self.monitor_video(camera, max_seconds))
+            self._monitor.start()
+            camera.encode_video(filename, 9000000, 60)
+            self._monitor.join()
+            print("Video saved to", filename)
+            ticks = camera.get_video_ticks()
+            self.save_video_meta(filename, ticks)
+            self.report_steps(self.get_steps(ticks))
+
+    def get_steps(self, ticks: List[float]):
+        p = None
+        steps: List[float] = []
+        for t in ticks:
+            if p is None:
+                p = t
+            else:
+                steps.append(t - p)
+                p = t
+        return steps
+
+    def save_video_meta(self, filename, ticks):
+        meta_file = os.path.splitext(filename)[0] + "_meta.json"
+        with open(meta_file, "w") as f:
+            json.dump({"video_ticks": ticks}, f)
+
+    def monitor_video(self, camera: DXCamera, max_seconds: int):
+        timer = Timer()
+        timer.start()
+        while timer.ticks() < max_seconds and not self._stop:
+            timer.sleep(100)
+        camera.stop_encoding()
+
+    def record_video(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
         self._video_writer = cv2.VideoWriter(
             filename,
             cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
@@ -67,7 +117,7 @@ class VideoRecorder:
         )
         steps = []
         timer = Timer()
-        frame_count =0
+        frame_count = 0
         with DXCamera(x, y, w, h, fps=fps) as camera:
             frame, timestamp = camera.get_bgr_frame()
             self._video_writer.write(frame)  # type: ignore
@@ -98,12 +148,8 @@ class VideoRecorder:
 
             self._video_writer.release()
 
-        if len(steps) > 0:
-            min_step = min(steps)
-            max_step = max(steps)
-            avg_step = sum(steps) / len(steps)
-            print("Video saved to", filename)
-            print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
+        print("Video saved to", filename)
+        self.report_steps(steps)
 
         total = timer.ticks()
         avg_fps = frame_count / total
@@ -113,8 +159,15 @@ class VideoRecorder:
             print(f"The video writer could not keep up with the target {fps} fps so the video will play too fast.")
             print("Please try a smaller window or a lower target fps.")
 
-    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int):
-        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video))
+    def report_steps(self, ticks):
+        if len(ticks) > 0:
+            min_step = min(ticks)
+            max_step = max(ticks)
+            avg_step = sum(ticks) / len(ticks)
+            print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
+
+    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool):
+        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native))
         self._thread.start()
 
     def stop(self):
@@ -151,7 +204,7 @@ def main():
         x, y, w, h = desktop.find(pid)
 
     recorder = VideoRecorder(args.output)
-    recorder.start(x, y, w, h, args.fps, args.seconds_per_video)
+    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native)
     input("Press ENTER to stop recording...")
     recorder.stop()
 

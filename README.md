@@ -83,6 +83,16 @@ like 30 fps.
 Note that this sleep is more accurate that python `time.sleep()` which on Windows is very inaccurate with a
 tolerance of +/- 15 milliseconds.  But this more accurate sleep is using a spin wait which uses one core of your CPU.
 
+## Video Encoding
+
+`wincam` also has an optimized way to encode videos directly on your GPU so your python code does not have to poll for frames and call the opencv VideoWriter.  This results in much smoother videos.
+
+`DXCamera` has an `encode_video` method which takes a a filename,
+bitrate and framerate.  This method encodes the video stream to an H264 encoded .mp4 file.  The method blocks until another thread calls
+`stop_encoding`.
+
+See the `--native` option on the example `video.py` script for an example.
+
 ## Credits
 
 This project was inspired by [dxcam](https://github.com/ra1nty/DXcam) and the

@@ -43,47 +43,6 @@ namespace util {
         return result;
     }
 
-    inline auto CreateDXGISwapChain(winrt::com_ptr<ID3D11Device> const& device, const DXGI_SWAP_CHAIN_DESC1* desc)
-    {
-        auto dxgiDevice = device.as<IDXGIDevice2>();
-        winrt::com_ptr<IDXGIAdapter> adapter;
-        winrt::check_hresult(dxgiDevice->GetParent(winrt::guid_of<IDXGIAdapter>(), adapter.put_void()));
-        winrt::com_ptr<IDXGIFactory2> factory;
-        winrt::check_hresult(adapter->GetParent(winrt::guid_of<IDXGIFactory2>(), factory.put_void()));
-
-        winrt::com_ptr<IDXGISwapChain1> swapchain;
-        winrt::check_hresult(factory->CreateSwapChainForComposition(device.get(), desc, nullptr, swapchain.put()));
-        return swapchain;
-    }
-
-    inline auto CreateDXGISwapChain(winrt::com_ptr<ID3D11Device> const& device,
-        uint32_t width, uint32_t height, DXGI_FORMAT format, uint32_t bufferCount)
-    {
-        DXGI_SWAP_CHAIN_DESC1 desc = {};
-        desc.Width = width;
-        desc.Height = height;
-        desc.Format = format;
-        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        desc.SampleDesc.Count = 1;
-        desc.SampleDesc.Quality = 0;
-        desc.BufferCount = bufferCount;
-        desc.Scaling = DXGI_SCALING_STRETCH;
-        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-        desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
-
-        return CreateDXGISwapChain(device, &desc);
-    }
-
-    inline auto CreateCompositionSurfaceForSwapChain(winrt::Windows::UI::Composition::Compositor const& compositor, ::IUnknown* swapChain)
-    {
-        winrt::Windows::UI::Composition::ICompositionSurface surface{ nullptr };
-        auto compositorInterop = compositor.as<ABI::Windows::UI::Composition::ICompositorInterop>();
-        winrt::com_ptr<ABI::Windows::UI::Composition::ICompositionSurface> surfaceInterop;
-        winrt::check_hresult(compositorInterop->CreateCompositionSurfaceForSwapChain(swapChain, surfaceInterop.put()));
-        winrt::check_hresult(surfaceInterop->QueryInterface(winrt::guid_of<winrt::Windows::UI::Composition::ICompositionSurface>(), winrt::put_abi(surface)));
-        return surface;
-    }
-
 }
 
 // since we are requesting B8G8R8A8UIntNormalized
@@ -111,8 +70,6 @@ void SimpleCapture::StartCapture(
     bool captureCursor)
 {
     m_frameId = 0;
-    m_buffer = nullptr;
-    m_size = 0;
     m_event = CreateEvent(NULL, FALSE, FALSE, NULL);
     m_item = item;
     m_device = device;
@@ -120,7 +77,6 @@ void SimpleCapture::StartCapture(
     m_bounds = bounds;
     m_croppedBounds = bounds;
     m_captureBounds = bounds;
-    m_timer.start();
 
     auto width = m_bounds.right - m_bounds.left;
     auto height = m_bounds.bottom - m_bounds.top;
@@ -156,16 +112,14 @@ void SimpleCapture::StartCapture(
     m_session.StartCapture();
 }
 
-bool SimpleCapture::WaitForFirstFrame(int timeout)
+bool SimpleCapture::WaitForNextFrame(int timeout)
 {
     auto hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     return hr == 0;
 }
 
-unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
+double SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
 {
-    m_buffer = buffer;
-    m_size = size;
     if (m_closed) {
         debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
     }
@@ -174,6 +128,38 @@ unsigned long long SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
     if (hr == WAIT_TIMEOUT) {
         printf("timeout waiting for FrameArrived event\n");
         return 0;
+    }
+    winrt::com_ptr<ID3D11Texture2D> frame;
+    {
+        CriticalSectionGuard guard;
+        frame = m_d3dCurrentFrame;
+    }
+
+    if (frame != nullptr) {
+        ReadPixels(frame.get(), buffer, size);
+    }
+    else {
+        return 0;
+    }
+
+    return m_frameTime;
+}
+
+double SimpleCapture::ReadNextTexture(winrt::com_ptr<ID3D11Texture2D>& result)
+{
+    if (m_closed) {
+        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
+    }
+    // make sure a frame has been written.
+    int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
+    if (hr == WAIT_TIMEOUT) {
+        printf("timeout waiting for FrameArrived event\n");
+        return 0;
+    }
+
+    {
+        CriticalSectionGuard guard;
+        result = m_d3dCurrentFrame;
     }
     return m_frameTime;
 }
@@ -185,8 +171,7 @@ void SimpleCapture::Close()
         m_framePool.FrameArrived(m_frameArrivedToken); // Remove the handler
         CriticalSectionGuard guard;
         m_closed = true;
-        m_size = 0;
-        m_buffer = nullptr;
+        m_d3dCurrentFrame = nullptr;
         m_session.Close();
         m_framePool.Close();
         m_framePool = nullptr;
@@ -194,6 +179,20 @@ void SimpleCapture::Close()
         m_item = nullptr;
         CloseHandle(m_event);
     }
+}
+
+RECT SimpleCapture::GetCaptureBounds()
+{
+    // to get the proper CPU mapped memory bounds we need to call ReadPixels at least once.
+    WaitForNextFrame(10000);
+    winrt::com_ptr<ID3D11Texture2D> frame = m_d3dCurrentFrame;
+    if (frame != nullptr) {
+        ReadPixels(frame.get(), nullptr, 0);
+    }
+    else {
+        throw std::exception("No frames are arriving");
+    }
+    return m_captureBounds;
 }
 
 inline int32_t Clamp(int32_t x, int32_t min, int32_t max) {
@@ -214,6 +213,10 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
 
     {
         auto frame = sender.TryGetNextFrame();
+        auto _systemFrameTime = frame.SystemRelativeTime();
+        auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(_systemFrameTime);
+        m_frameTime = static_cast<double>(nanoseconds.count() / 1e9);
+        
         auto frameSize = frame.ContentSize();
 
         // get the d3d surface.
@@ -253,7 +256,7 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         winrt::com_ptr<ID3D11DeviceContext> immediate;
         m_d3dDevice->GetImmediateContext(immediate.put());
         immediate->CopySubresourceRegion(croppedTexture.get(), 0, 0, 0, 0, sourceTexture.get(), 0, &srcBox);
-        ReadPixels(croppedTexture.get());
+        m_d3dCurrentFrame = croppedTexture;
     }
 
     SetEvent(m_event);
@@ -354,12 +357,12 @@ void SaveBitmap(UCHAR* pixels, D3D11_TEXTURE2D_DESC& desc, int stride) {
     }
 }
 
-void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
+void SimpleCapture::ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size) {
     // Copy GPU Resource to CPU
     D3D11_TEXTURE2D_DESC desc{};
     winrt::com_ptr<ID3D11Texture2D> copiedImage;
 
-    acquiredDesktopImage->GetDesc(&desc);
+    texture->GetDesc(&desc);
     if (desc.SampleDesc.Count != 1) {
         printf("SampleDesc.Count != 1\n");
         return;
@@ -386,13 +389,12 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
         debug_hresult(L"failed to create texture", hr, true);
     }
 
-    m_frameTime = static_cast<unsigned long long>(m_timer.microseconds());
     // Copy the image out of the backbuffer.
-    m_d3dContext->CopyResource(copiedImage.get(), acquiredDesktopImage);
+    m_d3dContext->CopyResource(copiedImage.get(), texture);
 
     D3D11_MAPPED_SUBRESOURCE resource{};
     UINT subresource = D3D11CalcSubresource(0 /* slice */, 0 /* array slice */, 1 /* mip levels */); //  desc.MipLevels);
-    m_d3dContext->ResolveSubresource(copiedImage.get(), subresource, acquiredDesktopImage, subresource, desc.Format);
+    m_d3dContext->ResolveSubresource(copiedImage.get(), subresource, texture, subresource, desc.Format);
     hr = m_d3dContext->Map(copiedImage.get(), subresource, D3D11_MAP_READ, 0, &resource);
     if (hr != S_OK) {
         debug_hresult(L"failed to map texture", hr, true);
@@ -416,10 +418,10 @@ void SimpleCapture::ReadPixels(ID3D11Texture2D* acquiredDesktopImage) {
         m_captureBounds.right = rowPitch / 4;
     }
 
-    if (m_buffer) {
-        char* ptr = m_buffer;
+    if (buffer) {
+        char* ptr = buffer;
         char* src = reinterpret_cast<char*>(resource.pData);
-        ::memcpy(ptr, src, min(m_size, captureSize));
+        ::memcpy(ptr, src, min(size, captureSize));
     }
 
     m_d3dContext->Unmap(copiedImage.get(), subresource);

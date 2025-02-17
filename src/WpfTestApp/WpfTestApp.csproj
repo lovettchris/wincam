@@ -10,4 +10,8 @@
     <Platforms>AnyCPU;ARM64</Platforms>
   </PropertyGroup>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="echo copying native binaries to $(TargetDir)&#xD;&#xA;COPY ..\x64\$(Configuration)\* $(TargetDir)" />
+  </Target>
+
 </Project>

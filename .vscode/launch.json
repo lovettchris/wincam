@@ -11,8 +11,11 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
+            "cwd": "${workspaceFolder}/examples",
             "args":[
-                "--point", "400,400"
+                "--point", "400,400",
+                "--seconds_per_video", "10",
+                "--native"
             ]
         }
     ]

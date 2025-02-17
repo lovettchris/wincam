@@ -2,11 +2,18 @@
 
 #include <Windows.h>
 
-typedef int CaptureHandle;
-#define INVALID_HANDLE -1
+extern "C" {
+    #define INVALID_HANDLE -1
+    unsigned int WINAPI StartCapture(int x, int y, int width, int height, bool captureCursor);
+    void WINAPI StopCapture(unsigned int handle);
+    unsigned long long WINAPI ReadNextFrame(unsigned int handle, char* buffer, unsigned int size);
+    bool WINAPI WaitForNextFrame(unsigned int handle, int timeout);
+    
+    const int Unknown = 1;
+    const int InvalidProfile = 2;
+    const int CodecNotFound = 3;
 
-CaptureHandle WINAPI StartCapture(int x, int y, int width, int height, bool captureCursor);
-void WINAPI StopCapture(CaptureHandle handle);
-unsigned long long WINAPI ReadNextFrame(CaptureHandle handle, char* buffer, unsigned int size);
-bool WINAPI WaitForFirstFrame(CaptureHandle handle, int timeout);
-RECT WINAPI GetCaptureBounds(CaptureHandle handle);
+    int WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, unsigned int bitrateInBps, unsigned int frameRate);
+    int WINAPI StopEncoding();
+    unsigned int WINAPI GetTicks(double* buffer, unsigned int size);
+}

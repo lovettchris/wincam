@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from .logger import Logger
+from wincam.logger import Logger
 
 logger = Logger()
 log = logger.get_root_logger()

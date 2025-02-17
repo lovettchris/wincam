@@ -264,6 +264,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
     <ClCompile Include="SimpleCapture.cpp" />
+    <ClCompile Include="VideoEncoder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Errors.h" />
@@ -271,6 +272,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClInclude Include="Timer.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SimpleCapture.h" />
+    <ClInclude Include="VideoEncoder.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
