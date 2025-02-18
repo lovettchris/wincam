@@ -149,6 +149,7 @@ double SimpleCapture::ReadNextTexture(winrt::com_ptr<ID3D11Texture2D>& result)
 {
     if (m_closed) {
         debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
+        return 0;
     }
     // make sure a frame has been written.
     int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
@@ -216,6 +217,7 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         auto _systemFrameTime = frame.SystemRelativeTime();
         auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(_systemFrameTime);
         m_frameTime = static_cast<double>(nanoseconds.count() / 1e9);
+        m_arrivalTimes.push_back(m_frameTime);
         
         auto frameSize = frame.ContentSize();
 

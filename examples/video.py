@@ -9,7 +9,7 @@ from typing import List
 from common import add_common_args
 import cv2
 
-from wincam import DXCamera, Timer
+from wincam import DXCamera, Timer, VideoEncodingQuality, EncodingProperties
 
 
 def get_argument_parser():
@@ -28,6 +28,7 @@ def get_argument_parser():
         help="Break up the video into multiple files with this many seconds per video",
     )
     parser.add_argument("--native", help="use GPU provided video encoder", action="store_true")
+    parser.add_argument("--memory", help="use in memory caching for video encoder", action="store_true")
     return parser
 
 
@@ -49,7 +50,7 @@ class VideoRecorder:
     def _signal_handler(self, sig, frame):
         self._stop = True
 
-    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool):
+    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
         index = 0
         print()
         while not self._stop:
@@ -57,7 +58,7 @@ class VideoRecorder:
             if index > 0:
                 filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
             if native:
-                self.native_encoder(filename, x, y, w, h, fps, seconds_per_video, index)
+                self.native_encoder(filename, x, y, w, h, fps, seconds_per_video, index, memory_cache)
             else:
                 self.record_video(filename, x, y, w, h, fps, seconds_per_video, index)
 
@@ -65,7 +66,7 @@ class VideoRecorder:
             if seconds_per_video == 0:
                 break
 
-    def native_encoder(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int):
+    def native_encoder(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, memory_cache: bool):
         timer = Timer()
         with DXCamera(x, y, w, h, fps=fps) as camera:
             frame, timestamp = camera.get_bgr_frame()
@@ -78,11 +79,20 @@ class VideoRecorder:
 
             self._monitor = Thread(target=lambda: self.monitor_video(camera, max_seconds))
             self._monitor.start()
-            camera.encode_video(filename, 9000000, 60)
+
+            props = EncodingProperties()
+            props.bit_rate = 9000000
+            props.frame_rate = 60
+            props.quality = VideoEncodingQuality.HD1080p
+            props.memory_cache = memory_cache
+            props.seconds = max_seconds
+
+            camera.encode_video(filename, props)
             self._monitor.join()
             print("Video saved to", filename)
             ticks = camera.get_video_ticks()
-            self.save_video_meta(filename, ticks)
+            frames = camera.get_frame_times()
+            self.save_video_meta(filename, ticks, frames)
             self.report_steps(self.get_steps(ticks))
 
     def get_steps(self, ticks: List[float]):
@@ -96,10 +106,10 @@ class VideoRecorder:
                 p = t
         return steps
 
-    def save_video_meta(self, filename, ticks):
+    def save_video_meta(self, filename, ticks, frames):
         meta_file = os.path.splitext(filename)[0] + "_meta.json"
         with open(meta_file, "w") as f:
-            json.dump({"video_ticks": ticks}, f)
+            json.dump({"video_ticks": ticks, "frame_times": frames}, f)
 
     def monitor_video(self, camera: DXCamera, max_seconds: int):
         timer = Timer()
@@ -166,8 +176,8 @@ class VideoRecorder:
             avg_step = sum(ticks) / len(ticks)
             print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
 
-    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool):
-        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native))
+    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
+        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, memory_cache))
         self._thread.start()
 
     def stop(self):
@@ -204,7 +214,7 @@ def main():
         x, y, w, h = desktop.find(pid)
 
     recorder = VideoRecorder(args.output)
-    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native)
+    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native, args.memory)
     input("Press ENTER to stop recording...")
     recorder.stop()
 

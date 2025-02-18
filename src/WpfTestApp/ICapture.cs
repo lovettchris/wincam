@@ -19,7 +19,7 @@ namespace WpfTestApp
 
         public ImageSource CaptureImage();
         void StopEncoding();
-        void EncodeVideo(string file);
+        void StartEncodeVideo(string file);
 
         event EventHandler<EncodingStats> EncodingCompleted;
     }

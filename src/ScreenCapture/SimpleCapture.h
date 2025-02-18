@@ -28,6 +28,8 @@ public:
     RECT GetTextureBounds() { return m_croppedBounds;  }
     double ReadNextTexture(winrt::com_ptr<ID3D11Texture2D>& result);
 
+    std::vector<double> GetArrivalTimes() { return m_arrivalTimes; }
+
 private:
     void OnFrameArrived(
         winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender,
@@ -52,4 +54,5 @@ private:
     double m_frameTime = 0;
     HANDLE m_event = NULL;
     bool m_saveBitmap = false;
+    std::vector<double> m_arrivalTimes;
 };

@@ -12,10 +12,11 @@
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/windows.graphics.directx.direct3d11.h>
 #include <d3d11.h>
+#include "ScreenCapture.h"
 #include "SimpleCapture.h"
 #include "VideoEncoder.h"
 #include "Errors.h"
-
+#undef min
 namespace winrt
 {
     using namespace Windows::Foundation;
@@ -139,9 +140,30 @@ unsigned int add_capture(std::shared_ptr<SimpleCapture> capture)
     return (int)(m_captures.size() - 1);
 }
 
-VideoEncoder encoder; // PS: this means we can only do one at a time.
+VideoEncoder encoder; // PS: this means we can only do one at a time
 
-static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shared_ptr<SimpleCapture> capture, const WCHAR* fullPath, unsigned int bitrateInBps, unsigned int frameRate)
+static winrt::Windows::Foundation::IAsyncOperation<uint64_t> CopyStreams(
+    winrt::Windows::Storage::Streams::InMemoryRandomAccessStream& memoryStream,
+    winrt::Windows::Storage::Streams::IRandomAccessStream& fileStream)
+{
+    // Reset position of memory stream to the beginning
+    memoryStream.Seek(0);
+
+    // Read from memory stream and write to file stream
+    winrt::Windows::Storage::Streams::Buffer buffer(1000000);
+    uint64_t totalBytes = memoryStream.Size();
+
+    while (totalBytes > 0)
+    {
+        uint64_t bytesToRead = (totalBytes > buffer.Capacity()) ? buffer.Capacity() : totalBytes;
+        auto readBuffer = co_await memoryStream.ReadAsync(buffer, static_cast<uint32_t>(bytesToRead), winrt::Windows::Storage::Streams::InputStreamOptions::None);
+        co_await fileStream.WriteAsync(readBuffer);
+        totalBytes -= bytesToRead;
+    }
+    co_return totalBytes;
+}
+
+static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shared_ptr<SimpleCapture> capture, const WCHAR* fullPath, VideoEncoderProperties* properties)
 {
     if (encoder.IsRunning()) {
         throw new std::exception("Another encoder is running, you can encode one video at a time");
@@ -149,14 +171,34 @@ static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shar
     std::filesystem::path fsPath(fullPath);
     auto path = fsPath.parent_path().wstring();
     auto filename = fsPath.filename().wstring();
+    if (properties->memory_cache > 0) {
+        if (properties->seconds == 0) {
+            throw new std::exception("The memory_cache option requires a fixed duration in seconds.");
+        }
+    }
 
+    int rc = 0;
     auto folder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(path);
     auto file = co_await folder.CreateFileAsync(filename);
     auto stream = co_await file.OpenAsync(winrt::Windows::Storage::FileAccessMode::ReadWrite);
 
-    int rc = 0;
-    auto result = encoder.EncodeAsync(capture, bitrateInBps, frameRate, stream);
-    rc = co_await result;
+    if (properties->memory_cache > 0) {
+        winrt::Windows::Storage::Streams::InMemoryRandomAccessStream cache;
+        // Preallocate a 1 gigabyte buffer (1024 * 1024 * 1024 bytes)
+        uint32_t bufferSize = 1024 * 1024 * 1024;
+        winrt::Windows::Storage::Streams::Buffer buffer(bufferSize);
+        stream.WriteAsync(buffer).get();
+        stream.Seek(0);
+
+        auto result = encoder.EncodeAsync(capture, properties, cache);
+        rc = co_await result;
+        co_await CopyStreams(cache, stream);
+    }
+    else {
+        auto result = encoder.EncodeAsync(capture, properties, stream);
+        rc = co_await result;
+    }
+    co_await stream.FlushAsync();
     co_return rc;
 }
 
@@ -234,13 +276,13 @@ extern "C" {
         return -1;
     }
 
-    int __declspec(dllexport) __stdcall  EncodeVideo(unsigned int captureHandle, const WCHAR* fullPath, unsigned int bitrateInBps, unsigned int frameRate)
+    int __declspec(dllexport) __stdcall  EncodeVideo(unsigned int captureHandle, const WCHAR* fullPath, VideoEncoderProperties* properties)
     {
         int rc = 0;
         std::wstring saved(fullPath);
         std::shared_ptr<SimpleCapture> ptr = get_capture(captureHandle);
         if (ptr != nullptr) {
-            rc = RunEncodeVideo(ptr, saved.c_str(), bitrateInBps, frameRate).get();
+            rc = RunEncodeVideo(ptr, saved.c_str(), properties).get();
         }
         return rc;
     }
@@ -254,6 +296,21 @@ extern "C" {
     unsigned int __declspec(dllexport) __stdcall  WINAPI GetTicks(double* buffer, unsigned int size)
     {
         return encoder.GetTicks(buffer, size);
+    }
+
+    unsigned int __declspec(dllexport) __stdcall WINAPI GetArrivalTimes(unsigned int captureHandle, double* buffer, unsigned int size)
+    {
+        std::shared_ptr<SimpleCapture> ptr = get_capture(captureHandle);
+        if (ptr != nullptr) {
+            auto arrivals = ptr->GetArrivalTimes();
+            auto available = (unsigned int)arrivals.size();
+            if (buffer != nullptr) {
+                auto count = std::min(available, size);
+                ::memcpy(buffer, arrivals.data(), count * sizeof(double));
+            }
+            return available;
+        }
+        return 0;
     }
 
 }

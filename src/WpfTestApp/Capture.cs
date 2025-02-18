@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using WpfTestApp.Native;
+using static WpfTestApp.CaptureNative;
 
 namespace WpfTestApp
 {
@@ -115,7 +116,7 @@ namespace WpfTestApp
             CaptureNative.StopEncoding();
         }
 
-        public void EncodeVideo(string file)
+        public void StartEncodeVideo(string file)
         {
             if (encoding)
             {
@@ -123,14 +124,21 @@ namespace WpfTestApp
             }
 
             encoding = true;
-            uint bitrateInBps = 9000000;
-            uint frameRate = 60;
+            var properties = new VideoEncoderProperties()
+            {
+                bitrateInBps = 9000000,
+                frameRate = 60,
+                quality = VideoEncodingQuality.QualityHD1080p,
+                memory_cache = 1,
+                seconds = 60,
+            };
             encoding = true;
             Task.Run(() =>
             {
                 try
                 {
-                    CaptureNative.EncodeVideo(this.captureHandle, file, bitrateInBps, frameRate);
+                    // Call the native ScreenCapture library.
+                    CaptureNative.EncodeVideo(this.captureHandle, file, ref properties);
                 }
                 catch (Exception e)
                 {
@@ -163,6 +171,30 @@ namespace WpfTestApp
 
     class CaptureNative
     {
+        public enum VideoEncodingQuality : uint
+        {
+            QualityAuto = 0,
+            QualityHD1080p = 1,
+            QualityHD720p = 2,
+            QualityWvga = 3,
+            QualityNtsc = 4,
+            QualityPal = 5,
+            QualityVga = 6,
+            QualityQvga = 7,
+            QualityUhd2160p = 8,
+            QualityUhd4320p = 9
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct VideoEncoderProperties
+        {
+            public uint bitrateInBps; // e.g. 9000000 for 9 mbps.
+            public uint frameRate; // e.g 30 or 60
+            public VideoEncodingQuality quality; 
+            public uint seconds; // maximum length before encoding finishes or 0 for infinite.
+            public uint memory_cache; // 1=use in-memory caching so no disk activity until encoding is done.
+        };
+
 
         [DllImport("ScreenCapture.dll")]
         internal static extern uint StartCapture(int x, int y, int width, int height, bool captureCursor);
@@ -180,7 +212,7 @@ namespace WpfTestApp
         internal static extern ulong ReadNextFrame(uint handle, byte[] buffer, uint size);
 
         [DllImport("ScreenCapture.dll", CharSet = CharSet.Unicode)]
-        internal static extern int EncodeVideo(uint captureHandle, string filename, uint bitrateInBps, uint frameRate);
+        internal static extern int EncodeVideo(uint captureHandle, string filename, ref VideoEncoderProperties properties);
 
         [DllImport("ScreenCapture.dll")]
         internal static extern int StopEncoding();

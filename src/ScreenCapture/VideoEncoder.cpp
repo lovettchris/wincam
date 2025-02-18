@@ -20,6 +20,7 @@ using namespace winrt::Windows::Media::Core;
 #include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
 #include <Windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/base.h>
+#undef min 
 
 winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface CreateDirect3DSurfaceFromTexture(ID3D11Texture2D* texture)
 {
@@ -47,32 +48,37 @@ void VideoEncoder::Stop()
 }
 
 unsigned int VideoEncoder::GetTicks(double* buffer, unsigned int size)
-{
+{    
+    auto available = (unsigned int)_ticks.size();
     if (buffer != nullptr) {
-        ::memcpy(buffer, _ticks.data(), size * sizeof(double));
+        auto count = std::min(available, size);
+        ::memcpy(buffer, _ticks.data(), count * sizeof(double));
     }
-    return (unsigned int)_ticks.size();
+    return available;
 }
 
 winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
     std::shared_ptr<SimpleCapture> capture,
-    unsigned int bitrateInBps, unsigned int frameRate,
+    VideoEncoderProperties* properties,
     winrt::Windows::Storage::Streams::IRandomAccessStream stream)
 {
     _stopped = false;
     _running = true;
     if (!capture->WaitForNextFrame(10000)) {
         _running = false;
-        throw std::exception("frame are not arriving");
+        throw std::exception("frames are not arriving");
     }
     _ticks.clear();
     _capture = capture;
     auto bounds = capture->GetTextureBounds();
     auto width = bounds.right - bounds.left;
     auto height = bounds.bottom - bounds.top;
+    auto bitrateInBps = properties->bitrateInBps;
+    auto frameRate = properties->frameRate;
+    _maxDuration = properties->seconds;
 
     // Describe mp4 video properties
-    auto qality = winrt::Windows::Media::MediaProperties::VideoEncodingQuality::HD1080p;
+    auto qality = (winrt::Windows::Media::MediaProperties::VideoEncodingQuality)(properties->quality);
     auto encodingProfile = winrt::Windows::Media::MediaProperties::MediaEncodingProfile::CreateMp4(qality);
     encodingProfile.Container().Subtype(L"MPEG4");
     auto videoProperties = encodingProfile.Video();
@@ -144,12 +150,15 @@ void VideoEncoder::OnSampleRequested(MediaStreamSource const& src, MediaStreamSo
     {
         winrt::com_ptr<ID3D11Texture2D> result;
         auto timestamp = _capture->ReadNextTexture(result);        
-        _ticks.push_back(timestamp - _startTick);
+        auto seconds = timestamp - _startTick;
+        _ticks.push_back(seconds);
+        if (_maxDuration > 0 && seconds >= _maxDuration) {
+            _stopped = true;
+        };
         if (result != nullptr) {
-            std::chrono::nanoseconds nano((long long)(timestamp * 1e9));
+            std::chrono::microseconds ms(static_cast<long long>(timestamp * 1e6));
             auto sample = MediaStreamSample::CreateFromDirect3D11Surface(
-                CreateDirect3DSurfaceFromTexture(result.get()), 
-                std::chrono::duration_cast<std::chrono::milliseconds>(nano));
+                CreateDirect3DSurfaceFromTexture(result.get()), ms);
             args.Request().Sample(sample);
         }
         else

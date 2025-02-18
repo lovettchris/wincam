@@ -13,7 +13,7 @@
             "justMyCode": false,
             "cwd": "${workspaceFolder}/examples",
             "args":[
-                "--point", "400,400",
+                "--point", " -800,400 ",
                 "--seconds_per_video", "10",
                 "--native"
             ]

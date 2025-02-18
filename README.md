@@ -85,11 +85,13 @@ tolerance of +/- 15 milliseconds.  But this more accurate sleep is using a spin 
 
 ## Video Encoding
 
-`wincam` also has an optimized way to encode videos directly on your GPU so your python code does not have to poll for frames and call the opencv VideoWriter.  This results in much smoother videos.
+`wincam` also has an optimized way to encode videos directly on your GPU so your python code does not have to poll for
+frames and call the opencv VideoWriter.  This results in much smoother videos.
 
-`DXCamera` has an `encode_video` method which takes a a filename,
-bitrate and framerate.  This method encodes the video stream to an H264 encoded .mp4 file.  The method blocks until another thread calls
-`stop_encoding`.
+`DXCamera` has an `encode_video` method which takes a a filename, bitrate and framerate.  This method encodes the video
+stream to an H264 encoded .mp4 file.  The method blocks until another thread calls `stop_encoding`.  You can also
+specify a maximum seconds to automatically stop encoding after a certain time and you can use an experimental
+memory_cache that cache all the frames in memory until that time is reached for maximum video smoothness (no dropped frames).
 
 See the `--native` option on the example `video.py` script for an example.
 

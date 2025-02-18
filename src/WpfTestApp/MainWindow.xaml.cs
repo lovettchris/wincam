@@ -16,11 +16,14 @@ namespace WpfTestApp
     public partial class MainWindow : Window
     {
         ICapture capture;
-        bool running;
+        bool capturing;
+        bool encoding;
         DispatcherTimer showMouseTimer;
         bool captured;
         int x = -1; 
         int y = -1;
+        DispatcherTimer showDurationTimer;
+        DateTime startTime;
 
         public MainWindow()
         {
@@ -31,7 +34,7 @@ namespace WpfTestApp
         protected override void OnClosing(CancelEventArgs e)
         {
             StopMouseTimer();
-            running = false;
+            capturing = false;
             base.OnClosing(e);
         }
 
@@ -51,81 +54,85 @@ namespace WpfTestApp
 
         private async void OnCapture(object sender, RoutedEventArgs e)
         {
-            this.CaptureButton.IsEnabled = false;
-            if (this.capture != null)
+            if (this.capturing)
             {
-                ShowStatus("Terminating previous capture...");
-                running = false;
+                ShowStatus("Terminating capture...");
+                capturing = false;
                 while (this.capture != null)
                 {
                     await Task.Delay(100);
                 }
-            }
-            running = true;
-            using var c = new Capture();
-            c.EncodingCompleted += OnEncodingCompleted;
-            this.capture = c;
-            List<int> averageFps = new List<int>();
-            try
-            {
-                ShowStatus("Initializing...");
-                await c.StartCapture(x, y);
+                this.capturing = false;
                 UpdateButtonState();
-                int ignore = 2;
-                await Task.Run(async () =>
+            }
+            else
+            {
+                capturing = true;
+                using var c = new Capture();
+                c.EncodingCompleted += OnEncodingCompleted;
+                this.capture = c;
+                List<int> averageFps = new List<int>();
+                try
                 {
-                    var throttle = new Throttle(60);
-                    var start = Environment.TickCount;
-                    int count = 0;
-                    while (running)
+                    ShowStatus("Initializing...");
+                    await c.StartCapture(x, y);
+                    UpdateButtonState();
+                    int ignore = 2;
+                    await Task.Run(async () =>
                     {
-                        await Dispatcher.InvokeAsync(new Action(() =>
+                        var throttle = new Throttle(60);
+                        var start = Environment.TickCount;
+                        int count = 0;
+                        while (capturing)
                         {
-                            var img = c.CaptureImage();
-                            this.CapturedImage.Source = img;
-                            if (img != null)
+                            await Dispatcher.InvokeAsync(new Action(() =>
                             {
-                                count++;
-                            }
-                        }), DispatcherPriority.Background);
+                                var img = c.CaptureImage();
+                                this.CapturedImage.Source = img;
+                                if (img != null)
+                                {
+                                    count++;
+                                }
+                            }), DispatcherPriority.Background);
 
-                        var end = Environment.TickCount;
-                        if (end > start + 1000)
-                        {
-                            var fps = count;
-                            count = 0;
-                            start = end;
-                            ShowStatus($"{fps} fps");
-                            if (ignore == 0)
+                            var end = Environment.TickCount;
+                            if (end > start + 1000)
                             {
-                                averageFps.Add(fps);
+                                var fps = count;
+                                count = 0;
+                                start = end;
+                                ShowStatus($"{fps} fps");
+                                if (ignore == 0)
+                                {
+                                    averageFps.Add(fps);
+                                }
+                                else
+                                {
+                                    ignore--;
+                                }
                             }
-                            else
-                            {
-                                ignore--;
-                            }
+                            throttle.Step();
                         }
-                        throttle.Step();
-                    }
-                });
-            }
-            catch (TaskCanceledException) 
-            {
-                Debug.WriteLine("Task cancelled");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Capture Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            
-            this.CaptureButton.IsEnabled = true;
-            this.capture = null;
-            running = false;
-            this.UpdateButtonState();
-            if (averageFps.Count > 0)
-            {
-                int avg = averageFps.Sum() / averageFps.Count;
-                this.ShowStatus($"average fps {avg}");
+                    });
+                }
+                catch (TaskCanceledException)
+                {
+                    Debug.WriteLine("Task cancelled");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Capture Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+                this.CaptureButton.IsEnabled = true;
+                this.capture = null;
+                capturing = false;
+                this.UpdateButtonState();
+                if (averageFps.Count > 0)
+                {
+                    int avg = averageFps.Sum() / averageFps.Count;
+                    this.ShowStatus($"average fps {avg}");
+                }
             }
         }
 
@@ -137,26 +144,40 @@ namespace WpfTestApp
             var meta_file = System.IO.Path.GetFileNameWithoutExtension(e.FileName) + "_meta.json";
             meta_file = Path.Combine(folder, meta_file);
             File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "]}");
-            var min = ticks.Min();
-            var max = ticks.Max();
-            var avg = ticks.Average();
-            var msg = $"frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
+
+            var steps = new List<double>();
+            for (int i = 1; i < ticks.Length; i++)
+            {
+                var step = ticks[i] - ticks[i - 1];
+                steps.Add(step);
+            }
+            var min = steps.Min();
+            var max = steps.Max();
+            var avg = steps.Average();
+            var msg = $"Frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
             Debug.WriteLine(msg);
-            ShowStatus(msg);
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ShowStatus(msg);
+                this.encoding = false;
+                UpdateButtonState();
+                MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
+            }));
         }
 
         private void OnStop(object sender, RoutedEventArgs e)
         {
-            this.running = false;
+            this.capturing = false;
             this.UpdateButtonState();
         }
 
         private void UpdateButtonState()
         {
             CaptureButton.IsEnabled = this.x != -1;
-            CaptureButton.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
-            StopButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
-            EncodeButton.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            EncodeButton.IsEnabled = this.capturing;
+            CaptureButton.Content = this.capturing ? "Stop Capture" : "Capture";
+            EncodeButton.Content = this.encoding ? "Stop Encoding" : "Encode Video";
         }
 
         #region WindowMousePicker
@@ -224,35 +245,68 @@ namespace WpfTestApp
             new MainWindow().Show();
         }
 
-        private void OnStopEncoding(object sender, RoutedEventArgs e)
-        {
-            if (this.capture != null)
-            {
-                this.capture.StopEncoding();
-            }
-        }
-
         private void OnEncode(object sender, RoutedEventArgs e)
         {
-            SaveFileDialog sd = new SaveFileDialog();
-            sd.Filter = ".mp4 files|*.mp4";
-            sd.CheckPathExists = true;
-            if (sd.ShowDialog() == true)
+            if (this.encoding)
             {
-                var file = sd.FileName;
+                StopCaptureTimer();
                 if (this.capture != null)
                 {
-                    try
+                    this.capture.StopEncoding();
+                }
+                this.encoding = false;
+                UpdateButtonState();
+            }
+            else
+            {
+                SaveFileDialog sd = new SaveFileDialog();
+                sd.Filter = ".mp4 files|*.mp4";
+                sd.CheckPathExists = true;
+                if (sd.ShowDialog() == true)
+                {
+                    var file = sd.FileName;
+                    if (this.capture != null)
                     {
-                        SafeDelete(file);
-                        this.capture.EncodeVideo(file);
-                    } 
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(ex.Message, "Encode Video Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        try
+                        {
+                            SafeDelete(file);
+                            this.encoding = true;
+                            UpdateButtonState();
+                            this.startTime = DateTime.Now;
+                            StartCaptureTimer();
+                            this.capture.StartEncodeVideo(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(ex.Message, "Encode Video Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            this.encoding = false;
+                            UpdateButtonState();
+                        }
                     }
                 }
             }
+        }
+
+        private void StopCaptureTimer()
+        {
+            if (this.showDurationTimer != null)
+            {
+                showDurationTimer.Stop();
+            }
+        }
+
+        private void StartCaptureTimer()
+        {
+            StopCaptureTimer();
+            showDurationTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Normal, UpdateDuration, this.Dispatcher);
+            showDurationTimer.Start();
+        }
+
+        private void UpdateDuration(object sender, EventArgs e)
+        {
+            var span = DateTime.Now - this.startTime;
+            span = TimeSpan.FromSeconds((int)span.TotalSeconds);
+            PositionText.Text = span.ToString("g");
         }
 
         private void SafeDelete(string file)

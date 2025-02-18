@@ -15,9 +15,8 @@
     <StackPanel Orientation="Horizontal">
       <ToggleButton x:Name="PickWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnPickWindowChecked">PickWindow</ToggleButton>
       <Button x:Name="CaptureButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCapture">Capture</Button>
-      <Button x:Name="StopButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnStop">Stop</Button>
       <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
-      <ToggleButton x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnEncode" Unchecked="OnStopEncoding">Encode</ToggleButton>
+      <Button x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncode">Encode</Button>
     </StackPanel>
     <Border Padding="10" Grid.Row="1" >
       <Image x:Name="CapturedImage" 

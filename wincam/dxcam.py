@@ -1,7 +1,7 @@
 import ctypes as ct
 import os
 from typing import Tuple
-
+from enum import Enum
 import cv2
 import numpy as np
 
@@ -13,6 +13,38 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 
 class Rect(ct.Structure):
     _fields_ = [("x", ct.c_int), ("y", ct.c_int), ("width", ct.c_int), ("height", ct.c_int)]
+
+
+class _EncoderPropertiesStruct(ct.Structure):
+    _fields_ = [("bit_rate", ct.c_uint32), ("frame_rate", ct.c_uint32), ("quality", ct.c_uint32), ("seconds", ct.c_uint32), ("memory_cache", ct.c_uint32)]
+
+
+class EncodingErrorReason(Enum):
+    Unknown = 1
+    InvalidProfile = 2
+    CodecNotFound = 3
+
+
+class VideoEncodingQuality(Enum):
+    Auto = 0
+    HD1080p = 1
+    HD720p = 2
+    Wvga = 3
+    Ntsc = 4
+    Pal = 5
+    Vga = 6
+    Qvga = 7
+    Uhd2160p = 8
+    Uhd4320p = 9
+
+
+class EncodingProperties:
+    def __init__(self, bit_rate: int = 9000000, frame_rate: int = 60, quality: VideoEncodingQuality = VideoEncodingQuality.Auto, seconds: int = 0, memory_cache: bool = False):
+        self.bit_rate = bit_rate
+        self.frame_rate = frame_rate
+        self.quality = quality
+        self.seconds = seconds
+        self.memory_cache = memory_cache
 
 
 class DXCamera(Camera):
@@ -38,10 +70,12 @@ class DXCamera(Camera):
             raise Exception(f"ScreenCapture.dll not found at: {full_path}")
         self.lib = ct.cdll.LoadLibrary(full_path)
         self.lib.GetCaptureBounds.restype = Rect
-        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.c_int, ct.c_int]
+        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, _EncoderPropertiesStruct]
         self.lib.EncodeVideo.restype = ct.c_uint32
         self.lib.GetTicks.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
         self.lib.GetTicks.restype = ct.c_uint32
+        self.lib.GetArrivalTimes.argtypes = [ct.c_uint32, ct.POINTER(ct.c_double), ct.c_int]
+        self.lib.GetArrivalTimes.restype = ct.c_uint32
         self._started = False
         self._buffer = None
         self._size = 0
@@ -89,12 +123,23 @@ class DXCamera(Camera):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         return frame, timestamp
 
-    def encode_video(self, file_name: str, bit_rate: int = 9000000, frame_rate: int = 60):
+    def encode_video(self, file_name: str, properties: EncodingProperties):
         self.get_bgr_frame()  # make sure we're getting frames.
         full_path = os.path.realpath(file_name)
         if os.path.isfile(full_path):
             os.remove(full_path)
-        self.lib.EncodeVideo(self._handle, full_path, bit_rate, frame_rate)
+
+        if properties.memory_cache and properties.seconds == 0:
+            raise Exception("You must specify a max seconds that will fit in memory if you enable the memory_cache.")
+
+        props = _EncoderPropertiesStruct()
+        props.bit_rate = properties.bit_rate
+        props.frame_rate = properties.frame_rate
+        props.quality = properties.quality.value
+        props.seconds = properties.seconds
+        props.memory_cache = 1 if properties.memory_cache else 0
+
+        self.lib.EncodeVideo(self._handle, full_path, props)
 
     def stop_encoding(self):
         self.lib.StopEncoding()
@@ -107,9 +152,17 @@ class DXCamera(Camera):
             return list(array)
         return []
 
+    def get_frame_times(self):
+        len = self.lib.GetArrivalTimes(self._handle, None, 0)
+        if len > 0:
+            array = (ct.c_double * len)()
+            self.lib.GetArrivalTimes(self._handle, array, len)
+            return list(array)
+        return []
+
     def stop(self):
         self._started = False
-        self.lib.StopCapture(self._handle)
         self.lib.StopEncoding()
+        self.lib.StopCapture(self._handle)
         self._buffer = None
         self._handle = -1
