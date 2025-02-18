@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ScreenRecorder.Native;
@@ -17,8 +16,10 @@ namespace ScreenRecorder
         bool started;
         const int channels = 4; // B8G8R8A8UIntNormalized;
         bool encoding;
+        bool disposed;
 
         public event EventHandler<EncodingStats> EncodingCompleted;
+        public event EventHandler<Exception> EncodingError;
 
         public Capture()
         {
@@ -110,20 +111,32 @@ namespace ScreenRecorder
                     // Call the native ScreenCapture library.
                     CaptureNative.EncodeVideo(this.captureHandle, file, ref properties);
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    MessageBox.Show(e.Message, "Encoding Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    var errorHandler = this.EncodingError;
+                    if (errorHandler != null)
+                    {
+                        errorHandler(this, ex);
+                    }
                 }
+
                 encoding = false;
                 var size = CaptureNative.GetTicks(null, 0);
                 double[] buffer = new double[size];
                 CaptureNative.GetTicks(buffer, size);
-                if (EncodingCompleted != null)
+
+                size = CaptureNative.GetArrivalTimes(this.captureHandle, null, 0);
+                double[] samples = new double[size];
+                CaptureNative.GetArrivalTimes(this.captureHandle, samples, size);
+
+                var handler = this.EncodingCompleted;
+                if (handler != null && !disposed)
                 {
-                    EncodingCompleted(this, new EncodingStats()
+                    handler(this, new EncodingStats()
                     {
                         FileName = file,
                         FrameTicks = buffer,
+                        SampleTicks = samples,
                         StartDelay = CaptureNative.GetStartDelay()
                     });
                 }
@@ -132,6 +145,7 @@ namespace ScreenRecorder
 
         public void Dispose()
         {
+            this.disposed = true;
             if (this.started)
             {
                 CaptureNative.StopEncoding();
@@ -168,6 +182,9 @@ namespace ScreenRecorder
 
         [DllImport("ScreenCapture.dll")]
         internal static extern uint GetTicks(double[] buffer, uint size);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern uint GetArrivalTimes(uint captureHandle, double[] buffer, uint size);
 
         [DllImport("ScreenCapture.dll")]
         internal static extern double GetStartDelay();
