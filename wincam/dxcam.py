@@ -76,6 +76,7 @@ class DXCamera(Camera):
         self.lib.GetTicks.restype = ct.c_uint32
         self.lib.GetArrivalTimes.argtypes = [ct.c_uint32, ct.POINTER(ct.c_double), ct.c_int]
         self.lib.GetArrivalTimes.restype = ct.c_uint32
+        self.lib.GetStartDelay.restype = ct.c_double
         self._started = False
         self._buffer = None
         self._size = 0
@@ -109,7 +110,7 @@ class DXCamera(Camera):
             self._throttle.reset()
 
         timestamp = self.lib.ReadNextFrame(self._handle, self._buffer, len(self._buffer))
-        image = np.resize(
+        image = np.reshape(
             np.frombuffer(self._buffer, dtype=np.uint8), (self._capture_bounds.height, self._capture_bounds.width, 4)
         )
         # strip out the alpha channel, and any 64-byte aligned extra width
@@ -159,6 +160,9 @@ class DXCamera(Camera):
             self.lib.GetArrivalTimes(self._handle, array, len)
             return list(array)
         return []
+
+    def get_start_delay(self) -> float:
+        return self.lib.GetStartDelay()
 
     def stop(self):
         self._started = False

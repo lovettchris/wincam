@@ -43,6 +43,7 @@ private:
     winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice m_device{ nullptr };
     winrt::com_ptr<ID3D11Device> m_d3dDevice{ nullptr };
     winrt::com_ptr<ID3D11DeviceContext> m_d3dContext{ nullptr };
+    std::mutex frame_mutex; // to protect updating and reading of m_d3dCurrentFrame
     winrt::com_ptr<ID3D11Texture2D> m_d3dCurrentFrame { nullptr };
     winrt::Windows::Graphics::DirectX::DirectXPixelFormat m_pixelFormat = winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized;
     bool m_closed = false;

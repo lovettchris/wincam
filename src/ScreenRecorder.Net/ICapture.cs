@@ -14,20 +14,21 @@ namespace ScreenRecorder
         /// </summary>
         public double[] FrameTicks;
         public string FileName;
+        public double StartDelay;
     }
 
     public enum VideoEncodingQuality : uint
     {
-        QualityAuto = 0,
-        QualityHD1080p = 1,
-        QualityHD720p = 2,
-        QualityWvga = 3,
-        QualityNtsc = 4,
-        QualityPal = 5,
-        QualityVga = 6,
-        QualityQvga = 7,
-        QualityUhd2160p = 8,
-        QualityUhd4320p = 9
+        Auto = 0,
+        HD1080p = 1,
+        HD720p = 2,
+        Wvga = 3,
+        Ntsc = 4,
+        Pal = 5,
+        Vga = 6,
+        Qvga = 7,
+        Uhd2160p = 8,
+        Uhd4320p = 9
     }
 
     [StructLayout(LayoutKind.Sequential)]

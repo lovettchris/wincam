@@ -129,10 +129,12 @@ double SimpleCapture::ReadNextFrame(uint32_t timeout, char* buffer, unsigned int
         printf("timeout waiting for FrameArrived event\n");
         return 0;
     }
+    double frameTime = 0;
     winrt::com_ptr<ID3D11Texture2D> frame;
     {
-        CriticalSectionGuard guard;
+        std::scoped_lock lock(frame_mutex);
         frame = m_d3dCurrentFrame;
+        frameTime = m_frameTime;
     }
 
     if (frame != nullptr) {
@@ -142,27 +144,30 @@ double SimpleCapture::ReadNextFrame(uint32_t timeout, char* buffer, unsigned int
         return 0;
     }
 
-    return m_frameTime;
+    return frameTime;
 }
 
 double SimpleCapture::ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result)
 {
     if (m_closed) {
-        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, timeout);
+        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
         return 0;
     }
-    // make sure a frame has been written.
+
+    // wait for next frame
     int hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     if (hr == WAIT_TIMEOUT) {
         printf("timeout waiting for FrameArrived event\n");
         return 0;
     }
-
+    double frameTime = 0;
     {
-        CriticalSectionGuard guard;
-        result = m_d3dCurrentFrame;
+        std::scoped_lock lock(frame_mutex);
+        result = m_d3dCurrentFrame;;
+        frameTime = m_frameTime;
     }
-    return m_frameTime;
+
+    return frameTime;
 }
 
 void SimpleCapture::Close()
@@ -171,7 +176,7 @@ void SimpleCapture::Close()
     {
         m_framePool.FrameArrived(m_frameArrivedToken); // Remove the handler
         CriticalSectionGuard guard;
-        m_closed = true;
+        m_closed = true;        
         m_d3dCurrentFrame = nullptr;
         m_session.Close();
         m_framePool.Close();
@@ -186,7 +191,11 @@ RECT SimpleCapture::GetCaptureBounds()
 {
     // to get the proper CPU mapped memory bounds we need to call ReadPixels at least once.
     WaitForNextFrame(10000);
-    winrt::com_ptr<ID3D11Texture2D> frame = m_d3dCurrentFrame;
+    winrt::com_ptr<ID3D11Texture2D> frame;
+    {
+        std::scoped_lock lock(frame_mutex);
+        frame = m_d3dCurrentFrame;
+    }
     if (frame != nullptr) {
         ReadPixels(frame.get(), nullptr, 0);
     }
@@ -216,11 +225,12 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         auto frame = sender.TryGetNextFrame();
         auto _systemFrameTime = frame.SystemRelativeTime();
         auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(_systemFrameTime);
-        m_frameTime = static_cast<double>(nanoseconds.count() / 1e9);
+        auto frameTime = static_cast<double>(nanoseconds.count() / 1e9);
         if (m_firstFrameTime == 0) {
-            m_firstFrameTime = m_frameTime;
+            m_firstFrameTime = frameTime;
         }
-        m_arrivalTimes.push_back(m_frameTime - m_firstFrameTime);
+        frameTime -= m_firstFrameTime;
+        m_arrivalTimes.push_back(frameTime);
         
         auto frameSize = frame.ContentSize();
 
@@ -261,7 +271,12 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         winrt::com_ptr<ID3D11DeviceContext> immediate;
         m_d3dDevice->GetImmediateContext(immediate.put());
         immediate->CopySubresourceRegion(croppedTexture.get(), 0, 0, 0, 0, sourceTexture.get(), 0, &srcBox);
-        m_d3dCurrentFrame = croppedTexture;
+
+        {
+            std::scoped_lock lock(frame_mutex);
+            m_d3dCurrentFrame = croppedTexture;
+            m_frameTime = frameTime;
+        }
     }
 
     SetEvent(m_event);

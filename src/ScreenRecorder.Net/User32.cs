@@ -131,6 +131,8 @@ public static class User32
     [DllImport("user32.dll")]
     public static extern nint GetDesktopWindow();
     [DllImport("user32.dll")]
+    public static extern nint GetParent(nint hWnd);
+    [DllImport("user32.dll")]
     public static extern nint GetDC(nint hWnd);
 
     [DllImport("user32.dll")]
@@ -372,6 +374,91 @@ public static class User32
         Point bottomRight = new Point(rect.Right, rect.Bottom);
 
         return new Rect(ConvertToDeviceIndependentPixels(hwnd, topLeft), ConvertToDeviceIndependentPixels(hwnd, bottomRight));
+    }
+
+    public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+    public static RECT GetWindowRectWithoutDropshadow(nint hwnd)
+    {
+        RECT bounds = new RECT();
+        if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out bounds, Marshal.SizeOf(typeof(RECT))) != 0)
+        {
+            GetWindowRect(hwnd, ref bounds);
+        }
+        return bounds;
+    }
+
+    /// <summary>
+    /// Return window client rect in window coordings
+    /// </summary>
+    public static RECT GetClientCroppingRect(nint hwnd)
+    {
+        // The GraphicsCaptureItem captures frames WITHOUT the dropshadow!
+        RECT windowRect = User32.GetWindowRectWithoutDropshadow(hwnd);
+        int x = windowRect.Left;
+        int y = windowRect.Top;
+        int width = windowRect.Right - x;
+        int height = windowRect.Bottom - y;
+
+        // Find a child HWND inside this window
+        POINT center = new POINT() { X = x + width / 2, Y = y + height / 2 };
+        nint innerHwnd = User32.WindowFromPoint(center);
+        nint parent = innerHwnd;
+
+        // Walk up the parent heirarchy until we find an HWND that is a direct child of the window.
+        while (parent != hwnd && parent != nint.Zero)
+        {
+            innerHwnd = parent;
+            parent = User32.GetParent(parent);
+        }
+
+        if (parent == nint.Zero)
+        {
+            // ooo, rats, no inner windows?  Or some popup is overlapping this area that is not a child?
+            // Hmmm... perhaps walk down then looking for the biggest chidl window to rule out status and menu bars...
+            int maxArea = 0;
+            EnumChildWindows(hwnd, new Callback((nint childHwnd, nint lparam) =>
+            {
+                RECT bounds = new RECT();
+                User32.GetWindowRect(childHwnd, ref bounds);
+                int childWidth = bounds.Right - bounds.Left;
+                int childHeight = bounds.Bottom - bounds.Top;
+                int area = childWidth * childHeight;
+                if (area > maxArea)
+                {
+                    innerHwnd = childHwnd;
+                    maxArea = area;
+                }
+                return true;
+            }), nint.Zero);
+        }
+
+        // get client rect in screen bounds!
+        RECT clientRect = new RECT();
+        User32.GetWindowRect(innerHwnd, ref clientRect);
+
+        if (hwnd == innerHwnd)
+        {
+            // Note: in some games there is no innerHwnd, this happens in the namco arcade games
+            // where there is only one child namely the window titlebar.
+            TITLEBARINFO titleBarInfo = new TITLEBARINFO();
+            titleBarInfo.cbSize = Marshal.SizeOf(titleBarInfo);
+            User32.GetTitleBarInfo(hwnd, ref titleBarInfo);
+            int titleBarHeight = (int)((titleBarInfo.rcTitleBar.Bottom - titleBarInfo.rcTitleBar.Top));
+            clientRect.Top += titleBarHeight;
+        }
+
+        // now make this relative to the window rect.
+        return new RECT()
+        {
+            Left = clientRect.Left - x,
+            Top = clientRect.Top - y,
+            Right = clientRect.Right - x,
+            Bottom = clientRect.Bottom - y
+        };
     }
 
 

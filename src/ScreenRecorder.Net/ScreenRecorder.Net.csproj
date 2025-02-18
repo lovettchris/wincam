@@ -10,6 +10,11 @@
     <Platforms>x64</Platforms>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <Authors>Chris Lovett</Authors>
+    <Company>Mirosoft</Company>
+    <Description>A managed wrapper on the ScreenCapture native library that uses Direct3D11CaptureFramePool do capture frames from your screen and do efficient GPU only video encoding of these captured frames</Description>
+    <Copyright>Microsoft Corporation</Copyright>
+    <PackageProjectUrl>https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net</PackageProjectUrl>
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">

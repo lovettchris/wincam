@@ -264,6 +264,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
     <ClCompile Include="SimpleCapture.cpp" />
+    <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VideoEncoder.cpp" />
   </ItemGroup>
   <ItemGroup>

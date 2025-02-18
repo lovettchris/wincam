@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>ScreenRecorder.Net</id>
+    <version>1.0.0</version>
+    <authors>Chris Lovett</authors>
+    <copyright >Microsoft Corporation</copyright>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net</projectUrl>
+    
+    <description>A managed wrapper on the ScreenCapture native library that uses Direct3D11CaptureFramePool do capture frames
+    from your screen and do efficient GPU only video encoding of these captured frames.</description>
+    <repository type="git" commit="4c4beae8c120ee80bd05027fb56a6d37d145cd97"
+                url="https://github.com/lovettchris/wincam"/>
+    <readme>docs/readme.md</readme>
+    <dependencies>
+      <group targetFramework="net8.0-windows10.0.26100" />
+    </dependencies>
+    <frameworkReferences>
+      <group targetFramework="net8.0-windows10.0.26100">
+        <frameworkReference name="Microsoft.WindowsDesktop.App.WPF" />
+      </group>
+    </frameworkReferences>
+  </metadata>
+  <files>
+    <file src="bin\x64\Release\net8.0-windows10.0.26100.0\ScreenCapture.*" target="runtimes/win-x64/native/" />
+    <file src="bin\x64\Release\net8.0-windows10.0.26100.0\ScreenRecorder.Net.*" target="lib/net8.0" />
+    <file src="readme.md" target="docs/" />
+  </files>
+</package>

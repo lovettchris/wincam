@@ -8,6 +8,8 @@ using Microsoft.Win32;
 using ScreenRecorder;
 using ScreenRecorder.Native;
 using System.IO;
+using System.Diagnostics.Eventing.Reader;
+using System.Windows.Interop;
 
 namespace WpfTestApp
 {
@@ -23,9 +25,11 @@ namespace WpfTestApp
         bool captured;
         int x = -1; 
         int y = -1;
-        Rect bounds;
+        RECT bounds;
         DispatcherTimer showDurationTimer;
         DateTime startTime;
+        bool calibrating;
+        uint frameRate = 60;
 
         public MainWindow()
         {
@@ -35,6 +39,7 @@ namespace WpfTestApp
 
         protected override void OnClosing(CancelEventArgs e)
         {
+            this.CalibrationView.OnClosed();
             StopMouseTimer();
             capturing = false;
             base.OnClosing(e);
@@ -54,38 +59,57 @@ namespace WpfTestApp
             }));
         }
 
+        private async Task StopCapture()
+        {
+            capturing = false;
+            while (this.capture != null)
+            {
+                await Task.Delay(100);
+            }
+            this.capturing = false;
+            UpdateButtonState();
+        }
+
         private async void OnCapture(object sender, RoutedEventArgs e)
         {
             if (this.capturing)
             {
-                ShowStatus("Terminating capture...");
-                capturing = false;
-                while (this.capture != null)
-                {
-                    await Task.Delay(100);
-                }
-                this.capturing = false;
-                UpdateButtonState();
+                await StopCapture();
             }
             else
             {
-                capturing = true;
-                using var c = new Capture();
-                c.EncodingCompleted += OnEncodingCompleted;
-                this.capture = c;
-                List<int> averageFps = new List<int>();
-                try
+                _ = StartCapture();
+            }
+        }
+
+        async Task StartCapture()
+        { 
+            capturing = true;
+            using var c = new Capture();
+            c.EncodingCompleted += OnEncodingCompleted;
+            this.capture = c;
+            List<int> averageFps = new List<int>();
+            try
+            {
+                ShowStatus("Initializing...");
+                int w = bounds.Right - bounds.Left;
+                int h = bounds.Bottom - bounds.Top;
+                await c.StartCapture(this.x, this.y, w, h, 10000);
+                UpdateButtonState();
+                int ignore = 2;
+                await Task.Run(async () =>
                 {
-                    ShowStatus("Initializing...");
-                    await c.StartCapture((int)this.x, (int)this.y, (int)bounds.Width, (int)bounds.Height, 10000);
-                    UpdateButtonState();
-                    int ignore = 2;
-                    await Task.Run(async () =>
+                    var throttle = new Throttle((int)frameRate);
+                    var start = Environment.TickCount;
+                    int count = 0;
+                    while (capturing)
                     {
-                        var throttle = new Throttle(60);
-                        var start = Environment.TickCount;
-                        int count = 0;
-                        while (capturing)
+                        if (this.encoding)
+                        {
+                            await Task.Delay(1000);
+                            throttle.Reset();
+                        } 
+                        else
                         {
                             await Dispatcher.InvokeAsync(new Action(() =>
                             {
@@ -113,28 +137,28 @@ namespace WpfTestApp
                                     ignore--;
                                 }
                             }
-                            throttle.Step();
                         }
-                    });
-                }
-                catch (TaskCanceledException)
-                {
-                    Debug.WriteLine("Task cancelled");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message, "Capture Failed", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                        throttle.Step();
+                    }
+                });
+            }
+            catch (TaskCanceledException)
+            {
+                Debug.WriteLine("Task cancelled");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Capture Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
 
-                this.CaptureButton.IsEnabled = true;
-                this.capture = null;
-                capturing = false;
-                this.UpdateButtonState();
-                if (averageFps.Count > 0)
-                {
-                    int avg = averageFps.Sum() / averageFps.Count;
-                    this.ShowStatus($"average fps {avg}");
-                }
+            this.CaptureButton.IsEnabled = true;
+            this.capture = null;
+            capturing = false;
+            this.UpdateButtonState();
+            if (averageFps.Count > 0)
+            {
+                int avg = averageFps.Sum() / averageFps.Count;
+                this.ShowStatus($"average fps {avg}");
             }
         }
 
@@ -142,10 +166,12 @@ namespace WpfTestApp
         {
             var ticks = e.FrameTicks;
             var data = string.Join(",", ticks);
+            var frames = e.SampleTicks;
+            var samples = string.Join(",", ticks);
             var folder = System.IO.Path.GetDirectoryName(e.FileName);
             var meta_file = System.IO.Path.GetFileNameWithoutExtension(e.FileName) + "_meta.json";
             meta_file = Path.Combine(folder, meta_file);
-            File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "]}");
+            File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "], \"frame_times\":[" + samples + "]}");
 
             var steps = new List<double>();
             for (int i = 1; i < ticks.Length; i++)
@@ -164,7 +190,14 @@ namespace WpfTestApp
                 ShowStatus(msg);
                 this.encoding = false;
                 UpdateButtonState();
-                MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
+                if (calibrating)
+                {
+                    OnCompleteCalibration(e);
+                }
+                else
+                {
+                    MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
+                }
             }));
         }
 
@@ -180,6 +213,17 @@ namespace WpfTestApp
             EncodeButton.IsEnabled = this.capturing;
             CaptureButton.Content = this.capturing ? "Stop Capture" : "Capture";
             EncodeButton.Content = this.encoding ? "Stop Encoding" : "Encode Video";
+            CapturedImage.Visibility = this.encoding ? Visibility.Collapsed : Visibility.Visible;
+            OverlayMessage.Visibility = this.encoding ? Visibility.Visible : Visibility.Collapsed;
+            if (calibrating)
+            {
+                OverlayMessage.Visibility = Visibility.Collapsed;
+                this.CalibrationView.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                this.CalibrationView.Visibility = Visibility.Collapsed;
+            }
         }
 
         #region WindowMousePicker
@@ -222,7 +266,6 @@ namespace WpfTestApp
                 var mousePos = User32.GetScreenCursorPos();
                 var x = (int)mousePos.X;
                 var y = (int)mousePos.Y;
-                this.UpdateButtonState();
                 POINT pt = new POINT() { X = x, Y = y };
                 nint hwnd = User32.WindowFromPoint(pt);
                 if (hwnd == nint.Zero)
@@ -231,10 +274,7 @@ namespace WpfTestApp
                 }
                 else
                 {
-                    this.x = x;
-                    this.y = y;
-                    this.bounds = User32.GetClientScreenRect(hwnd);
-                    ShowStatus($"Picked hwnd {hwnd:x8} bounds {bounds}");
+                    PickWindow(hwnd);
                 }
             }
             else
@@ -242,6 +282,19 @@ namespace WpfTestApp
                 base.OnMouseDown(e);
             }
         }
+
+        private void PickWindow(nint hwnd)
+        {
+            var windowBounds = User32.GetWindowRectWithoutDropshadow(hwnd);
+            this.bounds = User32.GetClientCroppingRect(hwnd);
+            this.x = windowBounds.Left + bounds.Left;
+            this.y = windowBounds.Top + bounds.Top;
+            this.UpdateButtonState();
+            var w = bounds.Right - bounds.Left;
+            var h = bounds.Bottom - bounds.Top;
+            ShowStatus($"Picked hwnd {hwnd:x8} bounds {this.x},{this.y},{w},{h}");
+        }
+
         #endregion
 
         private void OnNewWindowClicked(object sender, RoutedEventArgs e)
@@ -249,17 +302,22 @@ namespace WpfTestApp
             new MainWindow().Show();
         }
 
+        private void StopEncoding()
+        {
+            StopCaptureTimer();
+            if (this.capture != null)
+            {
+                this.capture.StopEncoding();
+            }
+            this.encoding = false;
+            UpdateButtonState();
+        }
+
         private void OnEncode(object sender, RoutedEventArgs e)
         {
             if (this.encoding)
             {
-                StopCaptureTimer();
-                if (this.capture != null)
-                {
-                    this.capture.StopEncoding();
-                }
-                this.encoding = false;
-                UpdateButtonState();
+                StopEncoding();
             }
             else
             {
@@ -269,33 +327,40 @@ namespace WpfTestApp
                 if (sd.ShowDialog() == true)
                 {
                     var file = sd.FileName;
-                    if (this.capture != null)
-                    {
-                        try
-                        {
-                            SafeDelete(file);
-                            this.encoding = true;
-                            UpdateButtonState();
-                            this.startTime = DateTime.Now;
-                            StartCaptureTimer();
+                    EncodeVideo(file, 60);
+                }
+            }
+        }
 
-                            var properties = new VideoEncoderProperties()
-                            {
-                                bitrateInBps = 9000000,
-                                frameRate = 60,
-                                quality = VideoEncodingQuality.QualityHD1080p,
-                                memory_cache = 1,
-                                seconds = 60,
-                            };
-                            this.capture.EncodeVideo(file, properties);
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(ex.Message, "Encode Video Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                            this.encoding = false;
-                            UpdateButtonState();
-                        }
-                    }
+        private void EncodeVideo(string file, uint seconds)
+        { 
+            if (this.capture != null)
+            {
+                try
+                {
+                    SafeDelete(file);
+                    this.encoding = true;
+                    UpdateButtonState();
+                    this.startTime = DateTime.Now;
+                    StartCaptureTimer();
+
+                    var properties = new VideoEncoderProperties()
+                    {
+                        bitrateInBps = 9000000,
+                        frameRate = this.frameRate,
+                        quality = VideoEncodingQuality.HD1080p,
+                        memory_cache = (uint)((seconds == 0) ? 0 : 1),
+                        seconds = seconds,
+                    };
+
+                    // kicks off an internal async task.
+                    this.capture.EncodeVideo(file, properties);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Encoding Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    this.encoding = false;
+                    UpdateButtonState();
                 }
             }
         }
@@ -311,7 +376,7 @@ namespace WpfTestApp
         private void StartCaptureTimer()
         {
             StopCaptureTimer();
-            showDurationTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Normal, UpdateDuration, this.Dispatcher);
+            showDurationTimer = new DispatcherTimer(TimeSpan.FromSeconds(0.5), DispatcherPriority.Normal, UpdateDuration, this.Dispatcher);
             showDurationTimer.Start();
         }
 
@@ -330,5 +395,62 @@ namespace WpfTestApp
             }
         }
 
+        private async void OnCompleteCalibration(EncodingStats e)
+        {
+            await StopCapture();
+            CalibrationView.Visibility = Visibility.Visible;
+            CalibrateButton.Content = "Calibrate";
+            CalibrateButton.IsEnabled = true;
+            calibrating = false;
+
+            int ms = (int)(e.StartDelay * 1000);
+            this.CalibrationView.OnRecordingCompleted(this.calibrationVideo, (int)this.frameRate, ms);
+        }
+
+        private async void OnCalibrate(object sender, RoutedEventArgs e)
+        {
+            if (calibrating)
+            {
+                CalibrateButton.Content = "Stopping...";
+                CalibrateButton.IsEnabled = false;
+                StopEncoding();                
+            }
+            else
+            {
+                calibrating = true;
+                CalibrateButton.Content = "Complete";
+                StopEncoding();
+                await StopCapture();
+
+                ShowStatus("Do a few mouse clicks to create calibration events...");
+                var hwnd = new WindowInteropHelper(this).Handle;
+                PickWindow(hwnd);
+                calibrating = true;
+                CalibrationView.Visibility = Visibility.Visible;
+                _ = StartCapture();
+                calibrationVideo = Path.Combine(Path.GetTempPath(), "calibration.mp4");
+                EncodeVideo(calibrationVideo, 0);
+                this.CalibrationView.OnRecordingStarted();
+            }
+               
+        }
+
+        string calibrationVideo;
+
+        private void HideCalibrator(object sender, RoutedEventArgs e)
+        {
+            CalibrationView.Visibility = Visibility.Collapsed;
+        }
+
+        private void OnCalibrationProgress(object sender, int e)
+        {
+            var total = this.CalibrationView.TotalFrames;
+            ShowStatus($"processing {e} of {total}");
+        }
+
+        private void OnCalibrationStatus(object sender, string msg)
+        {
+            ShowStatus(msg);
+        }
     }
 }

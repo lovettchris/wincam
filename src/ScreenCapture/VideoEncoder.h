@@ -22,6 +22,8 @@ public:
 
     bool IsRunning() { return _running; }
 
+    double GetStartDelay() { return _delta;  }
+
 private:
     void OnVideoStarting(winrt::Windows::Media::Core::MediaStreamSource const& src, winrt::Windows::Media::Core::MediaStreamSourceStartingEventArgs const& args);
     void OnSampleRequested(winrt::Windows::Media::Core::MediaStreamSource const& src, winrt::Windows::Media::Core::MediaStreamSourceSampleRequestedEventArgs const& args);
@@ -29,8 +31,8 @@ private:
     bool _stopped = false;
     std::vector<double> _ticks;
     double _maxDuration = 0; // seconds
+    double _delta; // delay from start to first sample.
     bool _running = false;
     util::Timer _sampleTimer;
-    uint32_t _msPerFrame = 30;
 };
 

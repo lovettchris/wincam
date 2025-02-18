@@ -97,6 +97,10 @@ namespace ScreenRecorder
             {
                 StopEncoding();
             }
+            if (System.IO.File.Exists(file))
+            {
+                System.IO.File.Delete(file);
+            }
 
             encoding = true;
             Task.Run(() =>
@@ -119,7 +123,8 @@ namespace ScreenRecorder
                     EncodingCompleted(this, new EncodingStats()
                     {
                         FileName = file,
-                        FrameTicks = buffer
+                        FrameTicks = buffer,
+                        StartDelay = CaptureNative.GetStartDelay()
                     });
                 }
             });
@@ -163,6 +168,9 @@ namespace ScreenRecorder
 
         [DllImport("ScreenCapture.dll")]
         internal static extern uint GetTicks(double[] buffer, uint size);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern double GetStartDelay();
 
     }
 }

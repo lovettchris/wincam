@@ -17,12 +17,17 @@
       <Button x:Name="CaptureButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCapture">Capture</Button>
       <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
       <Button x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncode">Encode</Button>
+      <Button x:Name="CalibrateButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCalibrate">Calibrate</Button>
     </StackPanel>
-    <Border Padding="10" Grid.Row="1" >
+    <Grid Margin="10" Grid.Row="1" >
       <Image x:Name="CapturedImage" 
              HorizontalAlignment="Center"
              VerticalAlignment="Center"/>
-    </Border>
+      <local:CalibrationView x:Name="CalibrationView" Visibility="Collapsed" Progress="OnCalibrationProgress"
+                             StatusEvent="OnCalibrationStatus"/>
+      <TextBlock x:Name="OverlayMessage" Margin="20" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+                 Visibility="Collapsed" Text="Video is encoding, and to remvoe all CPU overhead during the encoding process we have suspending displaying the captured frames ..."/>
+    </Grid>
     <Border Grid.Row="2" Padding="10,5">
       <Grid>
         <Grid.ColumnDefinitions>

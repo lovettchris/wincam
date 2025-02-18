@@ -69,6 +69,7 @@ winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
         throw std::exception("frames are not arriving");
     }
     _ticks.clear();
+    _sampleTimer.Start();
     _capture = capture;
     auto bounds = capture->GetTextureBounds();
     auto width = bounds.right - bounds.left;
@@ -76,7 +77,6 @@ winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
     auto bitrateInBps = properties->bitrateInBps;
     auto frameRate = properties->frameRate;
     _maxDuration = properties->seconds;
-    _msPerFrame = (1000 / frameRate);
 
     // Describe mp4 video properties
     auto qality = (winrt::Windows::Media::MediaProperties::VideoEncodingQuality)(properties->quality);
@@ -137,7 +137,8 @@ void VideoEncoder::OnVideoStarting(MediaStreamSource const& src, MediaStreamSour
 {
     winrt::com_ptr<ID3D11Texture2D> result;
     _capture->ReadNextTexture(10000, result);
-    _sampleTimer.start();
+    _delta = _sampleTimer.Seconds();
+    _sampleTimer.Start();
     args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(0)));
 }
 
@@ -149,9 +150,8 @@ void VideoEncoder::OnSampleRequested(MediaStreamSource const& src, MediaStreamSo
     else 
     {
         winrt::com_ptr<ID3D11Texture2D> result;
-        // don't wait more than _msPerFrame for each sample so we get a nice smooth video.
-        auto timestamp = _capture->ReadNextTexture(_msPerFrame, result);
-        auto seconds = _sampleTimer.seconds();
+        auto timestamp = _capture->ReadNextTexture(10000, result);
+        auto seconds = timestamp; // _sampleTimer.Seconds();
         // we could compare timestamp and seconds to see how well the capture rate is doing.
         _ticks.push_back(seconds);
         if (_maxDuration > 0 && seconds >= _maxDuration) {
