@@ -1,6 +1,7 @@
 #pragma once
 #include "SimpleCapture.h"
 #include "ScreenCapture.h"
+#include "Timer.h"
 #include <winrt/Windows.Media.Core.h>
 #include <winrt/Windows.Storage.Streams.h>
 
@@ -27,8 +28,9 @@ private:
     std::shared_ptr<SimpleCapture> _capture; 
     bool _stopped = false;
     std::vector<double> _ticks;
-    double _startTick = 0;
     double _maxDuration = 0; // seconds
     bool _running = false;
+    util::Timer _sampleTimer;
+    uint32_t _msPerFrame = 30;
 };
 

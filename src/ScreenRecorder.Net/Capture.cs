@@ -1,21 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using WpfTestApp.Native;
-using static WpfTestApp.CaptureNative;
+using ScreenRecorder.Native;
 
-namespace WpfTestApp
+namespace ScreenRecorder
 {
-    internal class Capture : ICapture
+    public class Capture : ICapture
     {
         byte[] buffer;
         int width;
@@ -32,20 +24,8 @@ namespace WpfTestApp
         {
         }
 
-        public async Task StartCapture(int x, int y, int timeout = 100000)
+        public async Task StartCapture(int x, int y, int w, int h, int timeout = 100000)
         {
-            POINT pos = new POINT()
-            {
-                X = x,
-                Y = y
-            };
-            nint innerHwnd = User32.WindowFromPoint(pos);
-            var bounds = User32.GetClientScreenRect(innerHwnd);
-
-            x = (int)bounds.Left;
-            y = (int)bounds.Top;
-            int w = (int)bounds.Width;
-            int h = (int)bounds.Height;
             this.width = w;
             this.height = h;
             this.stride = w * 4;
@@ -87,11 +67,6 @@ namespace WpfTestApp
 
         public ImageSource CaptureImage()
         {
-            if (encoding)
-            {
-                // just to see what the perf impact is...
-                return null;
-            }
             CheckStarted();
             var len = CaptureNative.ReadNextFrame(this.captureHandle, this.buffer, (uint)this.buffer.Length);
             if (len > 0)
@@ -116,22 +91,13 @@ namespace WpfTestApp
             CaptureNative.StopEncoding();
         }
 
-        public void StartEncodeVideo(string file)
-        {
+        public void EncodeVideo(string file, VideoEncoderProperties properties)
+        {        
             if (encoding)
             {
                 StopEncoding();
             }
 
-            encoding = true;
-            var properties = new VideoEncoderProperties()
-            {
-                bitrateInBps = 9000000,
-                frameRate = 60,
-                quality = VideoEncodingQuality.QualityHD1080p,
-                memory_cache = 1,
-                seconds = 60,
-            };
             encoding = true;
             Task.Run(() =>
             {
@@ -163,38 +129,16 @@ namespace WpfTestApp
         {
             if (this.started)
             {
+                CaptureNative.StopEncoding();
                 CaptureNative.StopCapture(this.captureHandle);
                 this.started = false;
             }
         }
+
     }
 
     class CaptureNative
     {
-        public enum VideoEncodingQuality : uint
-        {
-            QualityAuto = 0,
-            QualityHD1080p = 1,
-            QualityHD720p = 2,
-            QualityWvga = 3,
-            QualityNtsc = 4,
-            QualityPal = 5,
-            QualityVga = 6,
-            QualityQvga = 7,
-            QualityUhd2160p = 8,
-            QualityUhd4320p = 9
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct VideoEncoderProperties
-        {
-            public uint bitrateInBps; // e.g. 9000000 for 9 mbps.
-            public uint frameRate; // e.g 30 or 60
-            public VideoEncodingQuality quality; 
-            public uint seconds; // maximum length before encoding finishes or 0 for infinite.
-            public uint memory_cache; // 1=use in-memory caching so no disk activity until encoding is done.
-        };
-
 
         [DllImport("ScreenCapture.dll")]
         internal static extern uint StartCapture(int x, int y, int width, int height, bool captureCursor);

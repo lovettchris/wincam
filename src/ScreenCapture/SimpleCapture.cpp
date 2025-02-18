@@ -112,19 +112,19 @@ void SimpleCapture::StartCapture(
     m_session.StartCapture();
 }
 
-bool SimpleCapture::WaitForNextFrame(int timeout)
+bool SimpleCapture::WaitForNextFrame(uint32_t timeout)
 {
     auto hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     return hr == 0;
 }
 
-double SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
+double SimpleCapture::ReadNextFrame(uint32_t timeout, char* buffer, unsigned int size)
 {
     if (m_closed) {
         debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
     }
     // make sure a frame has been written.
-    int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
+    int hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     if (hr == WAIT_TIMEOUT) {
         printf("timeout waiting for FrameArrived event\n");
         return 0;
@@ -145,14 +145,14 @@ double SimpleCapture::ReadNextFrame(char* buffer, unsigned int size)
     return m_frameTime;
 }
 
-double SimpleCapture::ReadNextTexture(winrt::com_ptr<ID3D11Texture2D>& result)
+double SimpleCapture::ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result)
 {
     if (m_closed) {
-        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
+        debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, timeout);
         return 0;
     }
     // make sure a frame has been written.
-    int hr = WaitForMultipleObjects(1, &m_event, TRUE, 10000);
+    int hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
     if (hr == WAIT_TIMEOUT) {
         printf("timeout waiting for FrameArrived event\n");
         return 0;
@@ -217,7 +217,10 @@ void SimpleCapture::OnFrameArrived(winrt::Direct3D11CaptureFramePool const& send
         auto _systemFrameTime = frame.SystemRelativeTime();
         auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(_systemFrameTime);
         m_frameTime = static_cast<double>(nanoseconds.count() / 1e9);
-        m_arrivalTimes.push_back(m_frameTime);
+        if (m_firstFrameTime == 0) {
+            m_firstFrameTime = m_frameTime;
+        }
+        m_arrivalTimes.push_back(m_frameTime - m_firstFrameTime);
         
         auto frameSize = frame.ContentSize();
 

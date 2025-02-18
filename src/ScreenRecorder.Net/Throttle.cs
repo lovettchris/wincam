@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 
-namespace SmartReplayApp.Utilities
+namespace ScreenRecorder.Utilities
 {
     /// <summary>
     /// This class provides an accurate way of achieving a target frames per second

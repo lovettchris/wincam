@@ -1,4 +1,4 @@
-﻿namespace WpfTestApp.Native;
+﻿namespace ScreenRecorder.Native;
 
 using System;
 using System.Windows;

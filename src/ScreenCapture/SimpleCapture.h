@@ -14,7 +14,7 @@ public:
         RECT bounds,
         bool captureCursor);
 
-    bool WaitForNextFrame(int timeout);
+    bool WaitForNextFrame(uint32_t timeout);
 
     // When copying GPU to CPU data the row pitch can be 64 or 128 bit aligned, which can mean
     // you need to pass in a slightly bigger buffer. This ensures ReadNextFrame can do a single
@@ -23,10 +23,10 @@ public:
     RECT GetCaptureBounds();
     void Close();
 
-    double ReadNextFrame(char* buffer, unsigned int size);
+    double ReadNextFrame(uint32_t timeout, char* buffer, unsigned int size);
 
     RECT GetTextureBounds() { return m_croppedBounds;  }
-    double ReadNextTexture(winrt::com_ptr<ID3D11Texture2D>& result);
+    double ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result);
 
     std::vector<double> GetArrivalTimes() { return m_arrivalTimes; }
 
@@ -55,4 +55,5 @@ private:
     HANDLE m_event = NULL;
     bool m_saveBitmap = false;
     std::vector<double> m_arrivalTimes;
+    double m_firstFrameTime = 0;
 };

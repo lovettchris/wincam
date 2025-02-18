@@ -215,7 +215,7 @@ extern "C" {
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(h);
         if (ptr != nullptr) {
-            return ptr->ReadNextFrame(buffer, size);
+            return ptr->ReadNextFrame(10000, buffer, size);
         }
         return 0;
     }

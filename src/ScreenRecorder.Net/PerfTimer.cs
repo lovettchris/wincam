@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace SmartReplayApp.Utilities
+namespace ScreenRecorder.Utilities
 {
     public class PerfTimer
     {

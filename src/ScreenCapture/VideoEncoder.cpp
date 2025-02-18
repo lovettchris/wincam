@@ -76,6 +76,7 @@ winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
     auto bitrateInBps = properties->bitrateInBps;
     auto frameRate = properties->frameRate;
     _maxDuration = properties->seconds;
+    _msPerFrame = (1000 / frameRate);
 
     // Describe mp4 video properties
     auto qality = (winrt::Windows::Media::MediaProperties::VideoEncodingQuality)(properties->quality);
@@ -135,10 +136,9 @@ winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
 void VideoEncoder::OnVideoStarting(MediaStreamSource const& src, MediaStreamSourceStartingEventArgs const& args)
 {
     winrt::com_ptr<ID3D11Texture2D> result;
-    auto timestamp = _capture->ReadNextTexture(result);
-    std::chrono::nanoseconds nano((long long)(timestamp * 1e9));
-    _startTick = timestamp;
-    args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::milliseconds>(nano));
+    _capture->ReadNextTexture(10000, result);
+    _sampleTimer.start();
+    args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(0)));
 }
 
 void VideoEncoder::OnSampleRequested(MediaStreamSource const& src, MediaStreamSourceSampleRequestedEventArgs const& args)
@@ -149,14 +149,16 @@ void VideoEncoder::OnSampleRequested(MediaStreamSource const& src, MediaStreamSo
     else 
     {
         winrt::com_ptr<ID3D11Texture2D> result;
-        auto timestamp = _capture->ReadNextTexture(result);        
-        auto seconds = timestamp - _startTick;
+        // don't wait more than _msPerFrame for each sample so we get a nice smooth video.
+        auto timestamp = _capture->ReadNextTexture(_msPerFrame, result);
+        auto seconds = _sampleTimer.seconds();
+        // we could compare timestamp and seconds to see how well the capture rate is doing.
         _ticks.push_back(seconds);
         if (_maxDuration > 0 && seconds >= _maxDuration) {
             _stopped = true;
         };
         if (result != nullptr) {
-            std::chrono::microseconds ms(static_cast<long long>(timestamp * 1e6));
+            std::chrono::microseconds ms(static_cast<long long>(seconds * 1e6));
             auto sample = MediaStreamSample::CreateFromDirect3D11Surface(
                 CreateDirect3DSurfaceFromTexture(result.get()), ms);
             args.Request().Sample(sample);

@@ -1,11 +1,12 @@
-﻿using SmartReplayApp.Utilities;
+﻿using ScreenRecorder.Utilities;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
-using WpfTestApp.Native;
+using ScreenRecorder;
+using ScreenRecorder.Native;
 using System.IO;
 
 namespace WpfTestApp
@@ -22,6 +23,7 @@ namespace WpfTestApp
         bool captured;
         int x = -1; 
         int y = -1;
+        Rect bounds;
         DispatcherTimer showDurationTimer;
         DateTime startTime;
 
@@ -75,7 +77,7 @@ namespace WpfTestApp
                 try
                 {
                     ShowStatus("Initializing...");
-                    await c.StartCapture(x, y);
+                    await c.StartCapture((int)this.x, (int)this.y, (int)bounds.Width, (int)bounds.Height, 10000);
                     UpdateButtonState();
                     int ignore = 2;
                     await Task.Run(async () =>
@@ -218,8 +220,8 @@ namespace WpfTestApp
                 this.ReleaseMouseCapture();
                 e.Handled = true;
                 var mousePos = User32.GetScreenCursorPos();
-                this.x = (int)mousePos.X;
-                this.y = (int)mousePos.Y;
+                var x = (int)mousePos.X;
+                var y = (int)mousePos.Y;
                 this.UpdateButtonState();
                 POINT pt = new POINT() { X = x, Y = y };
                 nint hwnd = User32.WindowFromPoint(pt);
@@ -229,7 +231,9 @@ namespace WpfTestApp
                 }
                 else
                 {
-                    var bounds = User32.GetClientScreenRect(hwnd);
+                    this.x = x;
+                    this.y = y;
+                    this.bounds = User32.GetClientScreenRect(hwnd);
                     ShowStatus($"Picked hwnd {hwnd:x8} bounds {bounds}");
                 }
             }
@@ -274,7 +278,16 @@ namespace WpfTestApp
                             UpdateButtonState();
                             this.startTime = DateTime.Now;
                             StartCaptureTimer();
-                            this.capture.StartEncodeVideo(file);
+
+                            var properties = new VideoEncoderProperties()
+                            {
+                                bitrateInBps = 9000000,
+                                frameRate = 60,
+                                quality = VideoEncodingQuality.QualityHD1080p,
+                                memory_cache = 1,
+                                seconds = 60,
+                            };
+                            this.capture.EncodeVideo(file, properties);
                         }
                         catch (Exception ex)
                         {
