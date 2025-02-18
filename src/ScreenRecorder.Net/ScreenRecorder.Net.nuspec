@@ -10,7 +10,7 @@
     
     <description>A managed wrapper on the ScreenCapture native library that uses Direct3D11CaptureFramePool do capture frames
     from your screen and do efficient GPU only video encoding of these captured frames.</description>
-    <repository type="git" commit="4c4beae8c120ee80bd05027fb56a6d37d145cd97"
+    <repository type="git" commit="9b2ee8712326df3a3d559c240a2e4b8e9cff099a"
                 url="https://github.com/lovettchris/wincam"/>
     <readme>docs/readme.md</readme>
     <dependencies>
