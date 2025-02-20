@@ -6,37 +6,38 @@
         xmlns:local="clr-namespace:WpfTestApp"
         mc:Ignorable="d"
         Title="MainWindow" Height="720" Width="1024">
-  <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
-    <StackPanel Orientation="Horizontal">
-      <ToggleButton x:Name="PickWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnPickWindowChecked">PickWindow</ToggleButton>
-      <Button x:Name="CaptureButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCapture">Capture</Button>
-      <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
-      <Button x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncode">Encode</Button>
-      <Button x:Name="CalibrateButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCalibrate">Calibrate</Button>
-    </StackPanel>
-    <Grid Margin="10" Grid.Row="1" >
-      <Image x:Name="CapturedImage" 
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal">
+            <ToggleButton x:Name="PickWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnPickWindowChecked">PickWindow</ToggleButton>
+            <Button x:Name="CaptureButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCapture">Capture</Button>
+            <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
+            <Button x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncode">Windows Encode</Button>
+            <Button x:Name="EncodeFfmpegButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncodeFfmpeg">Ffmpeg Encode</Button>
+            <Button x:Name="CalibrateButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCalibrate">Calibrate</Button>
+        </StackPanel>
+        <Grid Margin="10" Grid.Row="1" >
+            <Image x:Name="CapturedImage" 
              HorizontalAlignment="Center"
              VerticalAlignment="Center"/>
-      <local:CalibrationView x:Name="CalibrationView" Visibility="Collapsed" Progress="OnCalibrationProgress"
+            <local:CalibrationView x:Name="CalibrationView" Visibility="Collapsed" Progress="OnCalibrationProgress"
                              StatusEvent="OnCalibrationStatus"/>
-      <TextBlock x:Name="OverlayMessage" Margin="20" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
+            <TextBlock x:Name="OverlayMessage" Margin="20" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"
                  Visibility="Collapsed" Text="Video is encoding, and to remvoe all CPU overhead during the encoding process we have suspending displaying the captured frames ..."/>
+        </Grid>
+        <Border Grid.Row="2" Padding="10,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" FontSize="14"/>
+                <TextBlock x:Name="PositionText" FontSize="14" Grid.Column="1"/>
+            </Grid>
+        </Border>
     </Grid>
-    <Border Grid.Row="2" Padding="10,5">
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="auto"/>
-        </Grid.ColumnDefinitions>
-        <TextBlock x:Name="StatusText" FontSize="14"/>
-        <TextBlock x:Name="PositionText" FontSize="14" Grid.Column="1"/>
-      </Grid>
-    </Border>
-  </Grid>
 </Window>

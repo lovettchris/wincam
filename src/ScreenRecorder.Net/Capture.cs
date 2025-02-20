@@ -69,10 +69,22 @@ namespace ScreenRecorder
         public ImageSource CaptureImage()
         {
             CheckStarted();
-            var len = CaptureNative.ReadNextFrame(this.captureHandle, this.buffer, (uint)this.buffer.Length);
-            if (len > 0)
-            {
-                return BitmapSource.Create(
+            var timestamp = CaptureNative.ReadNextFrame(this.captureHandle, this.buffer, (uint)this.buffer.Length);
+            return CreateBitmapImage(buffer);
+        }
+
+        public byte[] RawCaptureImageBuffer()
+        {
+            CheckStarted();
+            CaptureNative.ReadNextFrame(this.captureHandle, this.buffer, (uint)this.buffer.Length);
+            var result = new byte[this.buffer.Length];
+            Array.Copy(this.buffer, result, this.buffer.Length);
+            return result;
+        }
+
+        public BitmapSource CreateBitmapImage(byte[] buffer)
+        {
+            return BitmapSource.Create(
                     this.width,
                     this.height,
                     96, // dpiX
@@ -82,8 +94,6 @@ namespace ScreenRecorder
                     buffer,
                     this.stride
                 );
-            }
-            return null;
         }
 
         public void StopEncoding()

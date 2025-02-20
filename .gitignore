@@ -400,4 +400,4 @@ FodyWeavers.xsd
 # our native bits.
 /wincam/native/
 dist/
-examples/recordings/
+recordings/

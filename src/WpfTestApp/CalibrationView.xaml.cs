@@ -25,8 +25,6 @@ namespace WpfTestApp
         string outputFiles;
         bool closed;
         string videoFile;
-        int frameRate;
-        private int startDelayMilliseconds;
         Size textLabelSize;
         List<string> frames;
         ColorPalette palette = new ColorPalette();
@@ -47,18 +45,7 @@ namespace WpfTestApp
         {
             InitializeComponent();
             StartTimer();
-            outputFiles = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "calibration");
-        }
-
-        protected override void OnPreviewKeyDown(KeyEventArgs e)
-        {
-            if (e.Key == Key.F5 && !string.IsNullOrEmpty(this.videoFile))
-            {
-                e.Handled = true;
-                SyncVideoToShapes(this.videoFile);
-            }
-
-            base.OnPreviewKeyDown(e);
+            outputFiles = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "WpfTestApp", "calibration");
         }
 
         private void StartTimer()
@@ -141,23 +128,14 @@ namespace WpfTestApp
             }
         }
 
-        internal void OnRecordingCompleted(string videoFile, int frameRate, int startDelayMilliseconds)
-        {
-            this.startDelayMilliseconds = startDelayMilliseconds;
-            this.videoFile = videoFile;
-            this.frameRate = frameRate;
-            this.frames = null;
-            SyncVideoToShapes(this.videoFile);
-        }
-
         private string GetRgb(Color c)
         {
             return $"{c.R},{c.G},{c.B}";
         }
 
-        private async void SyncVideoToShapes(string videoFile)
+        internal async Task SyncVideoToShapes(string videoFile, int frameRate, int startDelayMilliseconds)
         {
-            if (!FindFFMPeg())
+            if (!Ffmpeg.FindFFMPeg())
             {
                 return;
             }
@@ -167,12 +145,11 @@ namespace WpfTestApp
             }
             var owner = Application.Current.MainWindow;
             var hwnd = new WindowInteropHelper(owner).Handle;
-            if (frames == null)
-            {
-                frames = await SplitVideo(videoFile);
-            }
+
+            CleanupOutputFiles();
+            this.frames = await Ffmpeg.SplitVideo(videoFile, this.outputFiles);
+
             this.TotalFrames = frames.Count;
-            var frameRate = this.frameRate;
             int debugFrame = -1;
             var pos = 0;
 
@@ -280,8 +257,6 @@ namespace WpfTestApp
             }
         }
 
-
-
         private void ShowStatus(string msg)
         {
             if (StatusEvent != null)
@@ -302,36 +277,7 @@ namespace WpfTestApp
             }
         }
 
-        string ffmpeg;
-
         public int TotalFrames { get; internal set; }
-
-        private async Task<List<string>> SplitVideo(string videoFile)
-        {
-            List<string> frames = new List<string>();
-            if (string.IsNullOrEmpty(ffmpeg))
-            {
-                return frames;
-            }
-
-            CleanupOutputFiles();
-            Directory.CreateDirectory(outputFiles);
-            var proc = Process.Start(new ProcessStartInfo()
-            {
-                FileName = ffmpeg,
-                Arguments = "-i " + "\"" + videoFile + "\" frame%04d.png",
-                WorkingDirectory = outputFiles
-
-            });
-            await proc.WaitForExitAsync();
-            int rc = proc.ExitCode;
-            if (rc != 0)
-            {
-                Debug.WriteLine($"ffmpeg returned {rc}");
-            }
-
-            return new List<string>(Directory.GetFiles(outputFiles));
-        }
 
         public async Task<BitmapImage> LoadBitmapAsync(string imageUrl)
         {
@@ -354,19 +300,5 @@ namespace WpfTestApp
             }
         }
 
-        internal bool FindFFMPeg()
-        {
-            if (string.IsNullOrEmpty(ffmpeg))
-            {
-                ffmpeg = FileHelpers.FindProgramInPath("ffmpeg.exe");
-            }
-            if (string.IsNullOrEmpty(ffmpeg))
-            {
-                MessageBox.Show("Please ensure ffpeg is in your PATH and restart this app", "ffmpeg not found",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
-            }
-            return true;
-        }
     }
 }

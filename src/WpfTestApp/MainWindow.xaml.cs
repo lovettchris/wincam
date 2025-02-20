@@ -10,31 +10,45 @@ using ScreenRecorder.Native;
 using System.IO;
 using System.Diagnostics.Eventing.Reader;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Controls;
+using System.Runtime.CompilerServices;
+using Windows.Globalization.DateTimeFormatting;
+using Windows.Media.Core;
 
 namespace WpfTestApp
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml. 
+    /// Interaction logic for MainWindow.xaml.
     /// </summary>
     public partial class MainWindow : Window
     {
         ICapture capture;
         bool capturing;
         bool encoding;
+        bool encodingFfmpeg;
         DispatcherTimer showMouseTimer;
         bool captured;
-        int x = -1; 
+        int x = -1;
         int y = -1;
         RECT bounds;
         DispatcherTimer showDurationTimer;
         DateTime startTime;
         bool calibrating;
         uint frameRate = 60;
+        nint hwnd;
 
         public MainWindow()
         {
             InitializeComponent();
             UpdateButtonState();
+            this.Loaded += OnWindowLoaded;
+        }
+
+        private void OnWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
         }
 
         protected override void OnClosing(CancelEventArgs e)
@@ -83,7 +97,7 @@ namespace WpfTestApp
         }
 
         async Task StartCapture()
-        { 
+        {
             capturing = true;
             using var c = new Capture();
             c.EncodingCompleted += OnEncodingCompleted;
@@ -108,7 +122,7 @@ namespace WpfTestApp
                         {
                             await Task.Delay(1000);
                             throttle.Reset();
-                        } 
+                        }
                         else
                         {
                             await Dispatcher.InvokeAsync(new Action(() =>
@@ -165,13 +179,41 @@ namespace WpfTestApp
         private void OnEncodingCompleted(object sender, EncodingStats e)
         {
             var ticks = e.FrameTicks;
-            var data = string.Join(",", ticks);
             var frames = e.SampleTicks;
-            var samples = string.Join(",", ticks);
-            var folder = System.IO.Path.GetDirectoryName(e.FileName);
-            var meta_file = System.IO.Path.GetFileNameWithoutExtension(e.FileName) + "_meta.json";
+            var file = e.FileName;
+            var folder = System.IO.Path.GetDirectoryName(file);
+
+            ShowVideo(file);
+            ProcessFrameTicks(ticks, frames, file);
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                this.encoding = false;
+                UpdateButtonState();
+                if (calibrating)
+                {
+                    OnCompleteCalibration(e);
+                }
+                else
+                {
+                    // MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
+                }
+            }));
+        }
+
+        private void ProcessFrameTicks(double[] ticks, double[] samples, string videoFileName)
+        {
+            var folder = System.IO.Path.GetDirectoryName(videoFileName);
+            var meta_file = System.IO.Path.GetFileNameWithoutExtension(videoFileName) + "_meta.json";
             meta_file = Path.Combine(folder, meta_file);
-            File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "], \"frame_times\":[" + samples + "]}");
+            var sampleData = "";
+            if (samples != null)
+            {
+                var text = string.Join(",", samples);
+                sampleData = ", \"frame_times\":[" + text + "]";
+            }
+            var data = string.Join(",", ticks);
+            File.WriteAllText(meta_file, "{\"video_ticks\":[" + data + "]" + sampleData + "}");
 
             var steps = new List<double>();
             for (int i = 1; i < ticks.Length; i++)
@@ -184,21 +226,8 @@ namespace WpfTestApp
             var avg = steps.Average();
             var msg = $"Frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
             Debug.WriteLine(msg);
+            ShowStatus(msg);
 
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                ShowStatus(msg);
-                this.encoding = false;
-                UpdateButtonState();
-                if (calibrating)
-                {
-                    OnCompleteCalibration(e);
-                }
-                else
-                {
-                    MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
-                }
-            }));
         }
 
         private void OnStop(object sender, RoutedEventArgs e)
@@ -210,9 +239,11 @@ namespace WpfTestApp
         private void UpdateButtonState()
         {
             CaptureButton.IsEnabled = this.x != -1;
-            EncodeButton.IsEnabled = this.capturing;
+            EncodeFfmpegButton.IsEnabled = this.capturing;
+            EncodeButton.IsEnabled = this.capturing && !this.encodingFfmpeg;
             CaptureButton.Content = this.capturing ? "Stop Capture" : "Capture";
             EncodeButton.Content = this.encoding ? "Stop Encoding" : "Encode Video";
+            EncodeFfmpegButton.Content = this.encoding ? "Stop Encoding" : "Ffmpeg Encode";
             CapturedImage.Visibility = this.encoding ? Visibility.Collapsed : Visibility.Visible;
             OverlayMessage.Visibility = this.encoding ? Visibility.Visible : Visibility.Collapsed;
             if (calibrating)
@@ -327,13 +358,13 @@ namespace WpfTestApp
                 if (sd.ShowDialog() == true)
                 {
                     var file = sd.FileName;
-                    EncodeVideo(file, 60);
+                    EncodeVideo(file, seconds:60);
                 }
             }
         }
 
         private void EncodeVideo(string file, uint seconds)
-        { 
+        {
             if (this.capture != null)
             {
                 try
@@ -355,6 +386,7 @@ namespace WpfTestApp
 
                     // kicks off an internal async task.
                     this.capture.EncodeVideo(file, properties);
+
                 }
                 catch (Exception ex)
                 {
@@ -364,6 +396,125 @@ namespace WpfTestApp
                 }
             }
         }
+
+        private void OnEncodeFfmpeg(object sender, RoutedEventArgs e)
+        {
+            if (this.encoding)
+            {
+                StopEncoding();
+            }
+            else
+            {
+                SaveFileDialog sd = new SaveFileDialog();
+                sd.Filter = ".mp4 files|*.mp4";
+                sd.CheckPathExists = true;
+                if (sd.ShowDialog() == true)
+                {
+                    var file = sd.FileName;
+                    EncodeFfmpeg(file, 60);
+                }
+            }
+        }
+
+        private async void EncodeFfmpeg(string file, int frameRate)
+        {
+            this.encoding = true;
+            this.encodingFfmpeg = true;
+            UpdateButtonState();
+            this.startTime = DateTime.Now;
+            StartCaptureTimer();
+            if (!Ffmpeg.FindFFMPeg())
+            {
+                return;
+            }
+
+            // Keep the frames in memory and write them out to png files then encode the result
+            // using ffmpeg.
+            await Task.Run(async () =>
+            {
+                var throttle = new Throttle((int)frameRate);
+                var start = Environment.TickCount;
+                var timer = new PerfTimer();
+                timer.Start();
+                List<byte[]> images = new List<byte[]>();
+                List<double> frameTicks = new List<double>();
+                ShowStatus("Capturing frames...");
+                while (this.encoding)
+                {
+                    var img = this.capture.RawCaptureImageBuffer();
+                    images.Add(img);
+                    frameTicks.Add(timer.GetSeconds());
+                    throttle.Step();
+                }
+
+                ShowStatus("Encoding frames...");
+                int i = 0;
+                DispatcherTimer statusTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Normal, (s, e) =>
+                {
+                    ShowStatus($"Saving frame {i} of {images.Count}...");
+                }, this.Dispatcher);
+
+                ProcessFrameTicks(frameTicks.ToArray(), null, file);
+
+                // ok, now save the frames and encode them into the file.
+                var outputFiles = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "WpfTestApp", "frames");
+                CleanupOutputFiles(outputFiles);
+                Directory.CreateDirectory(outputFiles);
+                Debug.WriteLine($"Saving frames to {outputFiles}");
+
+                for (i = 0; i < images.Count; i++)
+                {
+                    var img = this.capture.CreateBitmapImage(images[i]);
+                    var fileName = $"frame_{i:D4}.png";
+                    var filePath = Path.Combine(outputFiles, fileName);
+                    SavePng(img, filePath);
+                }
+
+                ShowStatus("Encoding video...");
+                var rc = await Ffmpeg.EncodeVideo(file, outputFiles, (int)this.frameRate);
+                if (rc != 0)
+                {
+                    Debug.WriteLine($"ffmpeg returned {rc}");
+                }
+                else
+                {
+                    ShowVideo(file);
+                }
+
+                statusTimer.Stop();
+
+            });
+
+            this.encodingFfmpeg = false;
+        }
+
+        private void ShowVideo(string filename)
+        {
+            Shell32.OpenUrl(hwnd, filename);
+        }
+
+        private void SavePng(BitmapSource img, string fileName)
+        {
+            BitmapEncoder encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(img));
+            using (var fileStream = new FileStream(fileName, System.IO.FileMode.Create))
+            {
+                encoder.Save(fileStream);
+            }
+        }
+
+        private void CleanupOutputFiles(string temp)
+        {
+            if (Directory.Exists(temp))
+            {
+                try
+                {
+                    Directory.Delete(temp, true);
+                }
+                catch { }
+            }
+        }
+
 
         private void StopCaptureTimer()
         {
@@ -399,12 +550,16 @@ namespace WpfTestApp
         {
             await StopCapture();
             CalibrationView.Visibility = Visibility.Visible;
+            CalibrateButton.Content = "Computing...";
+            CalibrateButton.IsEnabled = false;
+
+            int ms = (int)(e.StartDelay * 1000);
+            await this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate, ms);
+
+            CalibrationView.Visibility = Visibility.Visible;
             CalibrateButton.Content = "Calibrate";
             CalibrateButton.IsEnabled = true;
             calibrating = false;
-
-            int ms = (int)(e.StartDelay * 1000);
-            this.CalibrationView.OnRecordingCompleted(this.calibrationVideo, (int)this.frameRate, ms);
         }
 
         private async void OnCalibrate(object sender, RoutedEventArgs e)
@@ -413,7 +568,7 @@ namespace WpfTestApp
             {
                 CalibrateButton.Content = "Stopping...";
                 CalibrateButton.IsEnabled = false;
-                StopEncoding();                
+                StopEncoding();
             }
             else
             {
@@ -432,7 +587,7 @@ namespace WpfTestApp
                 EncodeVideo(calibrationVideo, 0);
                 this.CalibrationView.OnRecordingStarted();
             }
-               
+
         }
 
         string calibrationVideo;
@@ -452,5 +607,17 @@ namespace WpfTestApp
         {
             ShowStatus(msg);
         }
+
+        protected override void OnPreviewKeyDown(KeyEventArgs e)
+        {
+            if (e.Key == Key.F5 && !string.IsNullOrEmpty(this.calibrationVideo))
+            {
+                e.Handled = true;
+                _ = this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate, 0);
+            }
+
+            base.OnPreviewKeyDown(e);
+        }
+
     }
 }

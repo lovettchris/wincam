@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace ScreenRecorder
 {
@@ -61,6 +62,19 @@ namespace ScreenRecorder
         /// </summary>
         /// <returns></returns>
         public ImageSource CaptureImage();
+
+        /// <summary>
+        /// Return the next captured frame as a raw byte buffer.
+        /// </summary>
+        /// <returns></returns>
+        public byte[] RawCaptureImageBuffer();
+
+        /// <summary>
+        ///  Convert the raw image bytes it a WPF bitmap.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        public BitmapSource CreateBitmapImage(byte[] buffer);
 
         /// <summary>
         /// Start encoding video using GPU hardware H264 encoding and write the video to the

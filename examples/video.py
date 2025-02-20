@@ -108,8 +108,11 @@ class VideoRecorder:
 
     def save_video_meta(self, filename, ticks, frames):
         meta_file = os.path.splitext(filename)[0] + "_meta.json"
+        data = {"video_ticks": ticks}
+        if frames is not None:
+            data["frame_times"] = frames
         with open(meta_file, "w") as f:
-            json.dump({"video_ticks": ticks, "frame_times": frames}, f)
+            json.dump(data, f)
 
     def monitor_video(self, camera: DXCamera, max_seconds: int):
         timer = Timer()
@@ -127,6 +130,7 @@ class VideoRecorder:
         )
         steps = []
         timer = Timer()
+        ticks = []
         frame_count = 0
         with DXCamera(x, y, w, h, fps=fps) as camera:
             frame, timestamp = camera.get_bgr_frame()
@@ -150,7 +154,8 @@ class VideoRecorder:
                 self._video_writer.write(frame)
                 frame_count += 1
                 step_time = step_timer.ticks()
-                steps += [step_time]
+                steps.append(step_time)
+                ticks.append(timer.ticks())
                 if step_time > 1:
                     print(f"frame {frame_count} took {step_time:.3f} seconds??")
                 if max_seconds > 0 and timer.ticks() > max_seconds:
@@ -160,6 +165,7 @@ class VideoRecorder:
 
         print("Video saved to", filename)
         self.report_steps(steps)
+        self.save_video_meta(filename, ticks, None)
 
         total = timer.ticks()
         avg_fps = frame_count / total

@@ -117,7 +117,7 @@ class DXCamera(Camera):
         image = image[:, : self._width, :3]
 
         self._throttle.step()
-        return image, timestamp / 1000000.0
+        return image, timestamp
 
     def get_rgb_frame(self) -> Tuple[np.ndarray, float]:
         frame, timestamp = self.get_bgr_frame()
