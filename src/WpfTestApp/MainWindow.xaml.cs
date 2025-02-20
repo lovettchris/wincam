@@ -1,21 +1,15 @@
-﻿using ScreenRecorder.Utilities;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Threading;
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using ScreenRecorder;
 using ScreenRecorder.Native;
+using ScreenRecorder.Utilities;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
-using System.Diagnostics.Eventing.Reader;
+using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Controls;
-using System.Runtime.CompilerServices;
-using Windows.Globalization.DateTimeFormatting;
-using Windows.Media.Core;
+using System.Windows.Threading;
 
 namespace WpfTestApp
 {
