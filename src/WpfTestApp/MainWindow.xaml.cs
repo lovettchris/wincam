@@ -574,6 +574,7 @@ namespace WpfTestApp
                 CalibrateButton.IsEnabled = false;
                 this.CalibrationView.StopCalibrating();
                 StopEncoding();
+                await StopCapture();
             }
             else
             {
