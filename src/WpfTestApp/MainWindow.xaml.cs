@@ -2,6 +2,7 @@
 using ScreenRecorder;
 using ScreenRecorder.Native;
 using ScreenRecorder.Utilities;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -32,9 +33,11 @@ namespace WpfTestApp
         bool calibrating;
         uint frameRate = 60;
         nint hwnd;
+        DelayedActions actions = new DelayedActions();
 
         public MainWindow()
         {
+            UiDispatcher.Initialize();
             InitializeComponent();
             UpdateButtonState();
             this.Loaded += OnWindowLoaded;
@@ -52,6 +55,7 @@ namespace WpfTestApp
 
         protected override void OnClosing(CancelEventArgs e)
         {
+            this.actions.Close();
             this.CalibrationView.OnClosed();
             StopMouseTimer();
             capturing = false;
@@ -551,7 +555,6 @@ namespace WpfTestApp
             CalibrationView.Visibility = Visibility.Visible;
             CalibrateButton.Content = "Computing...";
             CalibrateButton.IsEnabled = false;
-            this.CalibrationView.StopCalibrating();
 
             int ms = (int)(e.StartDelay * 1000);
             Debug.WriteLine($"Encoder says start delay was {ms} milliseconds");
@@ -569,6 +572,7 @@ namespace WpfTestApp
             {
                 CalibrateButton.Content = "Stopping...";
                 CalibrateButton.IsEnabled = false;
+                this.CalibrationView.StopCalibrating();
                 StopEncoding();
             }
             else
@@ -599,6 +603,11 @@ namespace WpfTestApp
         }
 
         private void OnCalibrationProgress(object sender, int e)
+        {
+            actions.StartDelayedAction("ShowProgress", () => OnShowCalibrationProgress(e), TimeSpan.FromMilliseconds(30));
+        }
+
+        void OnShowCalibrationProgress(int e)
         {
             var total = this.CalibrationView.TotalFrames;
             ShowStatus($"processing {e} of {total}");

@@ -4,6 +4,11 @@ namespace WpfTestApp
 {
     internal class FileHelpers
     {
+        /// <summary>
+        /// Search the PATH environment for a given program.
+        /// </summary>
+        /// <param name="programName"></param>
+        /// <returns></returns>
         public static string FindProgramInPath(string programName)
         {
             if (File.Exists(programName))
