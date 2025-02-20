@@ -1,38 +1,30 @@
 #pragma once
 #include "SimpleCapture.h"
 #include "ScreenCapture.h"
-#include "Timer.h"
 #include <winrt/Windows.Media.Core.h>
 #include <winrt/Windows.Storage.Streams.h>
+
+class VideoEncoderImpl;
 
 class VideoEncoder
 {
 public:
-    VideoEncoder();
-    ~VideoEncoder();
+    __declspec(dllexport) VideoEncoder();
+    __declspec(dllexport) ~VideoEncoder();
 
-    winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
+    __declspec(dllexport) winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
         std::shared_ptr<SimpleCapture> capture,
         VideoEncoderProperties* properties,
         winrt::Windows::Storage::Streams::IRandomAccessStream stream);
 
-    void Stop();
+    __declspec(dllexport) void Stop();
 
-    unsigned int GetTicks(double* buffer, unsigned int size);
+    __declspec(dllexport) unsigned int GetTicks(double* buffer, unsigned int size);
 
-    bool IsRunning() { return _running; }
+    __declspec(dllexport) bool IsRunning();
 
-    double GetStartDelay() { return _delta;  }
+    __declspec(dllexport) double GetStartDelay();
 
 private:
-    void OnVideoStarting(winrt::Windows::Media::Core::MediaStreamSource const& src, winrt::Windows::Media::Core::MediaStreamSourceStartingEventArgs const& args);
-    void OnSampleRequested(winrt::Windows::Media::Core::MediaStreamSource const& src, winrt::Windows::Media::Core::MediaStreamSourceSampleRequestedEventArgs const& args);
-    std::shared_ptr<SimpleCapture> _capture; 
-    bool _stopped = false;
-    std::vector<double> _ticks;
-    double _maxDuration = 0; // seconds
-    double _delta; // delay from start to first sample.
-    bool _running = false;
-    util::Timer _sampleTimer;
+    std::unique_ptr<VideoEncoderImpl> m_pimpl;
 };
-

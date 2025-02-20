@@ -1,60 +1,36 @@
 #pragma once
 #include <mutex>
 
+class SimpleCaptureImpl;
+
 class SimpleCapture
 {
 public:
-    SimpleCapture();
-    ~SimpleCapture() { Close(); }
+    __declspec(dllexport) SimpleCapture();
+    __declspec(dllexport) ~SimpleCapture();
 
-    void StartCapture(
+    __declspec(dllexport) void StartCapture(
         winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice const& device,
         winrt::Windows::Graphics::Capture::GraphicsCaptureItem const& item,
         winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixelFormat,
         RECT bounds,
         bool captureCursor);
 
-    bool WaitForNextFrame(uint32_t timeout);
+    __declspec(dllexport) bool WaitForNextFrame(uint32_t timeout);
 
     // When copying GPU to CPU data the row pitch can be 64 or 128 bit aligned, which can mean
     // you need to pass in a slightly bigger buffer. This ensures ReadNextFrame can do a single
     // optimized memcpy operation but it also means it is up to you to crop the final image
     // to remove that extra data on the right side of each row.
-    RECT GetCaptureBounds();
-    void Close();
+    __declspec(dllexport) RECT GetCaptureBounds();
 
-    double ReadNextFrame(uint32_t timeout, char* buffer, unsigned int size);
+    __declspec(dllexport) double ReadNextFrame(uint32_t timeout, char* buffer, unsigned int size);
 
-    RECT GetTextureBounds() { return m_croppedBounds;  }
-    double ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result);
-
-    std::vector<double> GetArrivalTimes() { return m_arrivalTimes; }
-
-private:
-    void OnFrameArrived(
-        winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool const& sender,
-        winrt::Windows::Foundation::IInspectable const& args);
+    __declspec(dllexport) RECT GetTextureBounds();
+    __declspec(dllexport) double ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result);
+    
+    __declspec(dllexport) std::vector<double> GetArrivalTimes();
 
 private:
-    void ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size);
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem m_item{ nullptr };
-    winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool m_framePool{ nullptr };
-    winrt::Windows::Graphics::Capture::GraphicsCaptureSession m_session{ nullptr };
-    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice m_device{ nullptr };
-    winrt::com_ptr<ID3D11Device> m_d3dDevice{ nullptr };
-    winrt::com_ptr<ID3D11DeviceContext> m_d3dContext{ nullptr };
-    std::mutex frame_mutex; // to protect updating and reading of m_d3dCurrentFrame
-    winrt::com_ptr<ID3D11Texture2D> m_d3dCurrentFrame { nullptr };
-    winrt::Windows::Graphics::DirectX::DirectXPixelFormat m_pixelFormat = winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized;
-    bool m_closed = false;
-    winrt::event_token m_frameArrivedToken;
-    RECT m_bounds = { 0 };
-    RECT m_croppedBounds = { 0 };;
-    RECT m_captureBounds = { 0 };
-    unsigned long long m_frameId = 0;
-    double m_frameTime = 0;
-    HANDLE m_event = NULL;
-    bool m_saveBitmap = false;
-    std::vector<double> m_arrivalTimes;
-    double m_firstFrameTime = 0;
+    std::unique_ptr<SimpleCaptureImpl> m_pimpl;
 };

@@ -44,9 +44,19 @@ Timer::~Timer() {
 
 void Timer::Sleep(__int64 usec)
 {
-    LARGE_INTEGER period;
-    // negative values are for relative time
-    period.QuadPart = -(10 * usec);
-    SetWaitableTimer(_timer, &period, 0, NULL, NULL, 0);
-    WaitForSingleObject(_timer, INFINITE);
+    if (usec < 1000) {
+        // for less than millisecond we need to spin wait.
+        auto start = Microseconds();
+		while (Microseconds() - start < usec) {
+            // tradeoff: burn up the core in this tight loop in order to get precise timing...
+        }
+    }
+    else {
+        // this can do millisecond accurate sleeps
+        LARGE_INTEGER period;
+        // negative values are for relative time
+        period.QuadPart = -(10 * usec);
+        SetWaitableTimer(_timer, &period, 0, NULL, NULL, 0);
+        WaitForSingleObject(_timer, INFINITE);
+    }
 }

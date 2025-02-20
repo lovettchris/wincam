@@ -205,10 +205,7 @@ static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shar
 extern "C" {
     void __declspec(dllexport) __stdcall StopCapture(unsigned int h)
     {
-        std::shared_ptr<SimpleCapture> ptr = remove_capture(h);
-        if (ptr != nullptr) {
-            ptr->Close();
-        }
+        std::shared_ptr<SimpleCapture> ptr = remove_capture(h);        
     }
 
     double __declspec(dllexport) __stdcall ReadNextFrame(unsigned int h, char* buffer, unsigned int size)

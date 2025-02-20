@@ -4,7 +4,7 @@
 
 namespace util
 {
-    class Timer
+    class __declspec(dllexport) Timer
     {
     public:
         Timer();

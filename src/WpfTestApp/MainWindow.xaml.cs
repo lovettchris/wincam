@@ -48,7 +48,7 @@ namespace WpfTestApp
 
         private void OnWindowLoaded(object sender, RoutedEventArgs e)
         {
-            var hwnd = new WindowInteropHelper(this).Handle;
+            this.hwnd = new WindowInteropHelper(this).Handle;
         }
 
         private string GetTempPath(string name)
