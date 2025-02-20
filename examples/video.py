@@ -82,7 +82,7 @@ class VideoRecorder:
 
             props = EncodingProperties()
             props.bit_rate = 9000000
-            props.frame_rate = 60
+            props.frame_rate = fps
             props.quality = VideoEncodingQuality.HD1080p
             props.memory_cache = memory_cache
             props.seconds = max_seconds

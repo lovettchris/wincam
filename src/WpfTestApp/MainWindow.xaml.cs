@@ -51,6 +51,11 @@ namespace WpfTestApp
             var hwnd = new WindowInteropHelper(this).Handle;
         }
 
+        private string GetTempPath(string name)
+        {
+            return Path.Combine(Path.GetTempPath(), "WpfTestApp", name);
+        }
+
         protected override void OnClosing(CancelEventArgs e)
         {
             this.CalibrationView.OnClosed();
@@ -457,7 +462,7 @@ namespace WpfTestApp
                 ProcessFrameTicks(frameTicks.ToArray(), null, file);
 
                 // ok, now save the frames and encode them into the file.
-                var outputFiles = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "WpfTestApp", "frames");
+                var outputFiles = GetTempPath("frames");
                 CleanupOutputFiles(outputFiles);
                 Directory.CreateDirectory(outputFiles);
                 Debug.WriteLine($"Saving frames to {outputFiles}");
@@ -552,9 +557,11 @@ namespace WpfTestApp
             CalibrationView.Visibility = Visibility.Visible;
             CalibrateButton.Content = "Computing...";
             CalibrateButton.IsEnabled = false;
+            this.CalibrationView.StopCalibrating();
 
             int ms = (int)(e.StartDelay * 1000);
-            await this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate, ms);
+            Debug.WriteLine($"Encoder says start delay was {ms} milliseconds");
+            await this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate);
 
             CalibrationView.Visibility = Visibility.Visible;
             CalibrateButton.Content = "Calibrate";
@@ -583,7 +590,7 @@ namespace WpfTestApp
                 calibrating = true;
                 CalibrationView.Visibility = Visibility.Visible;
                 _ = StartCapture();
-                calibrationVideo = Path.Combine(Path.GetTempPath(), "calibration.mp4");
+                calibrationVideo = GetTempPath("calibration.mp4");
                 EncodeVideo(calibrationVideo, 0);
                 this.CalibrationView.OnRecordingStarted();
             }
@@ -613,7 +620,18 @@ namespace WpfTestApp
             if (e.Key == Key.F5 && !string.IsNullOrEmpty(this.calibrationVideo))
             {
                 e.Handled = true;
-                _ = this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate, 0);
+                _ = this.CalibrationView.SyncVideoToShapes(this.calibrationVideo, (int)this.frameRate);
+            }
+            else if (e.Key == Key.F9)
+            {
+                e.Handled = true;
+                OpenFileDialog sd = new OpenFileDialog();
+                sd.Filter = ".mp4 files|*.mp4";
+                sd.CheckPathExists = true;
+                if (sd.ShowDialog() == true)
+                {
+                    _ = this.CalibrationView.SyncVideoToShapes(sd.FileName, (int)this.frameRate);
+                }
             }
 
             base.OnPreviewKeyDown(e);

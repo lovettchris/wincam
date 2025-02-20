@@ -24,6 +24,7 @@ namespace WpfTestApp
         PerfTimer reference = new PerfTimer();
         string outputFiles;
         bool closed;
+        bool calibrating;
         string videoFile;
         Size textLabelSize;
         List<string> frames;
@@ -38,6 +39,8 @@ namespace WpfTestApp
             public TextBlock frameTime;
         }
         List<ShapeEvent> shapeEvents = new List<ShapeEvent>();
+        private TextBlock clockLabel;
+        private DispatcherTimer timer;
 
         public event EventHandler<string> StatusEvent;
 
@@ -45,7 +48,6 @@ namespace WpfTestApp
         {
             InitializeComponent();
             StartTimer();
-            outputFiles = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "WpfTestApp", "calibration");
         }
 
         private void StartTimer()
@@ -61,8 +63,12 @@ namespace WpfTestApp
 
         private void OnMouseLeftButtonClick(object sender, MouseButtonEventArgs e)
         {
+            if (!this.calibrating)
+            {
+                return;
+            }
             e.Handled = true; 
-            var now = (int)(1000 * reference.GetSeconds());
+            var now = (int)(1000 * this.reference.GetSeconds());
             var shapeColor = palette.GetNextColor();
             var r = new ShapeEvent() { color = shapeColor, milliseconds = now };
             this.shapeEvents.Add(r);
@@ -108,6 +114,7 @@ namespace WpfTestApp
 
         internal void OnRecordingStarted()
         {
+            this.calibrating = true;
             this.Clear();
             StartTimer();
         }
@@ -116,6 +123,30 @@ namespace WpfTestApp
         {
             this.DrawingCanvas.Children.Clear();
             this.shapeEvents.Clear();
+            // This animating clock ensures the frames keep changing (should be no duplicates).
+            this.clockLabel = this.AddLabel(new Point(10, 10), "0:00:00.000", 48, Brushes.Black);
+            this.timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Normal, OnTick, this.Dispatcher);
+            this.timer.Start();
+        }
+
+        private void OnTick(object sender, EventArgs e)
+        {
+            var now = (int)(1000 * this.reference.GetSeconds());
+            var text = TimeSpan.FromMilliseconds(now).ToString("g");
+            // 0:00:00.000
+            if (text.Length < 11)
+            {
+                text += new string('0', 11 - text.Length);
+            }
+            this.clockLabel.Text = text;
+        }
+
+        private void StopTimer()
+        {
+            if (this.timer != null)
+            {
+                this.timer.Stop();
+            }
         }
 
         public event EventHandler<int> Progress;
@@ -133,7 +164,13 @@ namespace WpfTestApp
             return $"{c.R},{c.G},{c.B}";
         }
 
-        internal async Task SyncVideoToShapes(string videoFile, int frameRate, int startDelayMilliseconds)
+        internal void StopCalibrating()
+        {
+            StopTimer();
+            this.calibrating = false;
+        }
+
+        internal async Task SyncVideoToShapes(string videoFile, int frameRate)
         {
             if (!Ffmpeg.FindFFMPeg())
             {
@@ -143,8 +180,10 @@ namespace WpfTestApp
             {
                 return;
             }
+            int startDelayMilliseconds = 0;
             var owner = Application.Current.MainWindow;
             var hwnd = new WindowInteropHelper(owner).Handle;
+            this.outputFiles = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(videoFile), "frames");
 
             CleanupOutputFiles();
             this.frames = await Ffmpeg.SplitVideo(videoFile, this.outputFiles);
@@ -199,8 +238,19 @@ namespace WpfTestApp
                     if (ColorPalette.IsColorClose(e.color, found))
                     {
                         // found it!!
-                        int ms = startDelayMilliseconds + (int)((frameIndex * 1000) / frameRate);
+                        int ms = (int)((frameIndex * 1000) / frameRate);
                         int delta = (ms - e.milliseconds);
+                        if (pos == 0)
+                        {
+                            // fudge the first one so it matches, we only care about the delta after this one.
+                            startDelayMilliseconds = delta;
+                            delta = 0;
+                        }
+                        else
+                        {
+                            ms -= startDelayMilliseconds;
+                            delta -= startDelayMilliseconds;
+                        }
                         Debug.WriteLine($"Found shape {pos} at time {ms}, expecting {e.milliseconds}, delta {delta}" +
                             $", found color {GetRgb(found)} expecting color {GetRgb(e.color)}");
                         var text = $"{ms} ({delta})";
@@ -267,7 +317,7 @@ namespace WpfTestApp
 
         private void CleanupOutputFiles()
         {
-            if (Directory.Exists(outputFiles))
+            if (!string.IsNullOrEmpty(outputFiles) && Directory.Exists(outputFiles))
             {
                 try
                 {
