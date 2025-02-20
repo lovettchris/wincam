@@ -103,7 +103,8 @@ namespace ScreenRecorder
         }
 
         public void EncodeVideo(string file, VideoEncoderProperties properties)
-        {        
+        {
+            file = System.IO.Path.GetFullPath(file);
             if (encoding)
             {
                 StopEncoding();
@@ -112,6 +113,8 @@ namespace ScreenRecorder
             {
                 System.IO.File.Delete(file);
             }
+            var dir = System.IO.Path.GetDirectoryName(file);
+            System.IO.Directory.CreateDirectory(dir);
 
             encoding = true;
             Task.Run(() =>
