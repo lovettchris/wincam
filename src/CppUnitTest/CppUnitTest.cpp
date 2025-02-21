@@ -22,7 +22,7 @@ struct MinMaxAvg
 		for (auto d : data) {
 			if (d < min) min = d;
 			if (d > max) max = d;
-			sum += d;
+			sum += std::abs(d);
 		}
 		return { min, max, sum / data.size() };
 	}
