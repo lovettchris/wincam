@@ -2,12 +2,11 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>ScreenRecorder.Net</id>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <authors>Chris Lovett</authors>
     <copyright >Microsoft Corporation</copyright>
     <license type="expression">MIT</license>
-    <projectUrl>https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net</projectUrl>
-    
+    <projectUrl>https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net</projectUrl>    
     <description>A managed wrapper on the ScreenCapture native library that uses Direct3D11CaptureFramePool do capture frames
     from your screen and do efficient GPU only video encoding of these captured frames.</description>
     <repository type="git" commit="c6f3d8497b008ab653c20cd6878fb7816ccd4aaf"

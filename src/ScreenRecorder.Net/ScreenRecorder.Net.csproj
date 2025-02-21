@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="echo copying native binaries to $(TargetDir)&#xD;&#xA;COPY ..\x64\$(Configuration)\* $(TargetDir)" />
+    <Exec Command="echo copying native binaries to $(TargetDir)&#xD;&#xA;COPY ..\x64\$(Configuration)\ScreenCapture* $(TargetDir)" />
   </Target>
 
 </Project>

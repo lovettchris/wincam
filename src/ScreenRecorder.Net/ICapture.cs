@@ -14,7 +14,13 @@ namespace ScreenRecorder
         /// The time that frames are captured.
         /// </summary>
         public double[] FrameTicks;
+        /// <summary>
+        /// The video file that was created.
+        /// </summary>
         public string FileName;
+        /// <summary>
+        /// A measure of how long it took for video encoding to get started.
+        /// </summary>
         public double StartDelay;
     }
 
