@@ -103,7 +103,6 @@ from wincam import DXCamera, VideoEncodingQuality, EncodingProperties
 fps = 60
 with DXCamera(x, y, w, h, fps=fps) as camera:
     while True:
-        frame, timestamp = camera.get_bgr_frame()
         props = EncodingProperties()
         props.frame_rate = fps
         props.quality = VideoEncodingQuality.HD1080p

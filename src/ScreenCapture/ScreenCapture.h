@@ -8,7 +8,7 @@ extern "C" {
     void __declspec(dllexport) WINAPI StopCapture(unsigned int handle);
     double __declspec(dllexport) WINAPI ReadNextFrame(unsigned int handle, char* buffer, unsigned int size);
     bool __declspec(dllexport)  WINAPI WaitForNextFrame(unsigned int handle, int timeout);
-    
+
     // EncodeVideo error return codes.
     const int ReasonUnknown = 1;
     const int ReasonInvalidProfile = 2;
@@ -36,6 +36,6 @@ extern "C" {
 
     int __declspec(dllexport) WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, VideoEncoderProperties* properties);
     int __declspec(dllexport) WINAPI StopEncoding();
-    unsigned int __declspec(dllexport) WINAPI GetTicks(double* buffer, unsigned int size);
-    unsigned int __declspec(dllexport) WINAPI GetArrivalTimes(unsigned int captureHandle, double* buffer, unsigned int size);
+    unsigned int __declspec(dllexport) WINAPI GetSampleTimes(double* buffer, unsigned int size);
+    unsigned int __declspec(dllexport) WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size);
 }

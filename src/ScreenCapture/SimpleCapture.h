@@ -28,8 +28,8 @@ public:
 
     __declspec(dllexport) RECT GetTextureBounds();
     __declspec(dllexport) double ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result);
-    
-    __declspec(dllexport) std::vector<double> GetArrivalTimes();
+
+    __declspec(dllexport) std::vector<double> GetCaptureTimes();
 
 private:
     std::unique_ptr<SimpleCaptureImpl> m_pimpl;

@@ -117,7 +117,7 @@ std::shared_ptr<SimpleCapture> remove_capture(unsigned int h)
             if (m_captures[last] == nullptr) {
                 m_captures.pop_back();
             }
-            else 
+            else
             {
                 break;
             }
@@ -205,7 +205,7 @@ static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shar
 extern "C" {
     void __declspec(dllexport) __stdcall StopCapture(unsigned int h)
     {
-        std::shared_ptr<SimpleCapture> ptr = remove_capture(h);        
+        std::shared_ptr<SimpleCapture> ptr = remove_capture(h);
     }
 
     double __declspec(dllexport) __stdcall ReadNextFrame(unsigned int h, char* buffer, unsigned int size)
@@ -216,7 +216,7 @@ extern "C" {
         }
         return 0;
     }
-    
+
     bool  __declspec(dllexport) __stdcall WaitForNextFrame(unsigned int h, int timeout)
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(h);
@@ -246,7 +246,7 @@ extern "C" {
                 FindMonitor(x, y, width, height, true);
                 debug_hresult(L"Monitor not found", E_FAIL, true);
             }
-            
+
             winrt::com_ptr<ID3D11Device> d3dDevice;
             HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION, d3dDevice.put(), nullptr, nullptr);
             debug_hresult(L"D3D11CreateDevice", hr);
@@ -259,7 +259,7 @@ extern "C" {
 
             RECT bounds = { mon.x, mon.y, mon.x + width, mon.y + height };
             auto capture = std::make_shared<SimpleCapture>();
-            capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);            
+            capture->StartCapture(device, item, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, bounds, captureCursor);
             return add_capture(capture);
         }
         catch (winrt::hresult_error const& ex) {
@@ -290,16 +290,16 @@ extern "C" {
         return 0;
     }
 
-    unsigned int __declspec(dllexport) __stdcall  WINAPI GetTicks(double* buffer, unsigned int size)
+    unsigned int __declspec(dllexport) __stdcall  WINAPI GetSampleTimes(double* buffer, unsigned int size)
     {
-        return encoder.GetTicks(buffer, size);
+        return encoder.GetSampleTimes(buffer, size);
     }
 
-    unsigned int __declspec(dllexport) __stdcall WINAPI GetArrivalTimes(unsigned int captureHandle, double* buffer, unsigned int size)
+    unsigned int __declspec(dllexport) __stdcall WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size)
     {
         std::shared_ptr<SimpleCapture> ptr = get_capture(captureHandle);
         if (ptr != nullptr) {
-            auto arrivals = ptr->GetArrivalTimes();
+            auto arrivals = ptr->GetCaptureTimes();
             auto available = (unsigned int)arrivals.size();
             if (buffer != nullptr) {
                 auto count = std::min(available, size);

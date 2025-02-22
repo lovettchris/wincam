@@ -21,7 +21,7 @@ using namespace winrt::Windows::Media::Core;
 #include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
 #include <Windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/base.h>
-#undef min 
+#undef min
 
 winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface CreateDirect3DSurfaceFromTexture(ID3D11Texture2D* texture)
 {
@@ -51,7 +51,7 @@ public:
     void Stop() {
         _stopped = true;
     }
-    unsigned int GetTicks(double* buffer, unsigned int size)
+    unsigned int GetSampleTimes(double* buffer, unsigned int size)
     {
         auto available = (unsigned int)_ticks.size();
         if (buffer != nullptr) {
@@ -196,10 +196,10 @@ public:
             winrt::com_ptr<ID3D11Texture2D> result;
             auto timestamp = _capture->ReadNextTexture(10000, result);
             auto seconds = timestamp; // use the time this frame was rendered to sync the video.
-            
+
             // but store ticks according to our start time so the user knows how much delay there was getting
             // the video pipeline up and running.
-            _ticks.push_back(_sampleTimer.Seconds()); 
+            _ticks.push_back(_sampleTimer.Seconds());
             if (_maxDuration > 0 && seconds >= _maxDuration) {
                 _stopped = true;
             };
@@ -233,9 +233,9 @@ void VideoEncoder::Stop()
 
 bool VideoEncoder::IsRunning() { return m_pimpl->_running; }
 
-unsigned int VideoEncoder::GetTicks(double* buffer, unsigned int size)
+unsigned int VideoEncoder::GetSampleTimes(double* buffer, unsigned int size)
 {
-	return m_pimpl->GetTicks(buffer, size);
+	return m_pimpl->GetSampleTimes(buffer, size);
 }
 
 winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(

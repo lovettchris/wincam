@@ -19,7 +19,7 @@ public:
 
     __declspec(dllexport) void Stop();
 
-    __declspec(dllexport) unsigned int GetTicks(double* buffer, unsigned int size);
+    __declspec(dllexport) unsigned int GetSampleTimes(double* buffer, unsigned int size);
 
     __declspec(dllexport) bool IsRunning();
 

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # project metadata
 [project]
 name = "wincam"
-version = "1.0.7"
+version = "1.0.8"
 authors = [
     {name = "lovettchris"}
 ]

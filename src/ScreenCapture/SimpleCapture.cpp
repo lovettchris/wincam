@@ -473,7 +473,7 @@ public:
 
 SimpleCapture::SimpleCapture()
 {
-	m_pimpl = std::make_unique<SimpleCaptureImpl>();  
+	m_pimpl = std::make_unique<SimpleCaptureImpl>();
     InitializeCriticalSection(&m_mutex);
 }
 
@@ -487,13 +487,13 @@ RECT SimpleCapture::GetCaptureBounds()
 	return m_pimpl->GetCaptureBounds();
 }
 
-RECT SimpleCapture::GetTextureBounds() 
-{ 
+RECT SimpleCapture::GetTextureBounds()
+{
     return m_pimpl->m_croppedBounds;
 }
 
-std::vector<double> SimpleCapture::GetArrivalTimes() 
-{ 
+std::vector<double> SimpleCapture::GetCaptureTimes()
+{
     return m_pimpl->m_arrivalTimes;
 }
 

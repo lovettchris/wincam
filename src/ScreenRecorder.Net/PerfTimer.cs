@@ -33,8 +33,8 @@ namespace ScreenRecorder.Utilities
         /// Get time in seconds, (accurate to 100 nanoseconds).
         /// </summary>
         public double GetSeconds()
-        {      
-            return (double)GetTicks() / (double)m_Freq;
+        {
+            return (double)Get100Nanos() / (double)m_Freq;
         }
 
         /// <summary>
@@ -42,14 +42,14 @@ namespace ScreenRecorder.Utilities
         /// </summary>
         public double GetMilliseconds()
         {
-            return (double)(GetTicks() * (long)1000) / (double)m_Freq;
+            return (double)(Get100Nanos() * (long)1000) / (double)m_Freq;
         }
 
         /// <summary>
         /// Get the time in 100 nanosecond ticks since the last call to Start().
         /// </summary>
         /// <returns></returns>
-        public long GetTicks()
+        public long Get100Nanos()
         {
             return GetCounter() - m_Start;
         }

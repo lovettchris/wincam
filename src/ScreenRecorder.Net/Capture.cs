@@ -159,13 +159,13 @@ public class Capture : ICapture
             }
 
             encoding = false;
-            var size = CaptureNative.GetTicks(null, 0);
+            var size = CaptureNative.GetSampleTimes(null, 0);
             double[] buffer = new double[size];
-            CaptureNative.GetTicks(buffer, size);
+            CaptureNative.GetSampleTimes(buffer, size);
 
-            size = CaptureNative.GetArrivalTimes(this.captureHandle, null, 0);
+            size = CaptureNative.GetCaptureTimes(this.captureHandle, null, 0);
             double[] samples = new double[size];
-            CaptureNative.GetArrivalTimes(this.captureHandle, samples, size);
+            CaptureNative.GetCaptureTimes(this.captureHandle, samples, size);
 
             var handler = this.EncodingCompleted;
             if (handler != null && !disposed)
@@ -308,9 +308,9 @@ class CaptureNative
     internal static extern int StopEncoding();
 
     [DllImport("ScreenCapture.dll")]
-    internal static extern uint GetTicks(double[] buffer, uint size);
+    internal static extern uint GetSampleTimes(double[] buffer, uint size);
 
     [DllImport("ScreenCapture.dll")]
-    internal static extern uint GetArrivalTimes(uint captureHandle, double[] buffer, uint size);
+    internal static extern uint GetCaptureTimes(uint captureHandle, double[] buffer, uint size);
 
 }

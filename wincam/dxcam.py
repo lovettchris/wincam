@@ -72,11 +72,10 @@ class DXCamera(Camera):
         self.lib.GetCaptureBounds.restype = Rect
         self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.POINTER(_EncoderPropertiesStruct)]
         self.lib.EncodeVideo.restype = ct.c_uint32
-        self.lib.GetTicks.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
-        self.lib.GetTicks.restype = ct.c_uint32
-        self.lib.GetArrivalTimes.argtypes = [ct.c_uint32, ct.POINTER(ct.c_double), ct.c_int]
-        self.lib.GetArrivalTimes.restype = ct.c_uint32
-        self.lib.GetStartDelay.restype = ct.c_double
+        self.lib.GetSampleTimes.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
+        self.lib.GetSampleTimes.restype = ct.c_uint32
+        self.lib.GetCaptureTimes.argtypes = [ct.c_uint32, ct.POINTER(ct.c_double), ct.c_int]
+        self.lib.GetCaptureTimes.restype = ct.c_uint32
         self._started = False
         self._buffer = None
         self._size = 0
@@ -147,23 +146,20 @@ class DXCamera(Camera):
         self.lib.StopEncoding()
 
     def get_video_ticks(self):
-        len = self.lib.GetTicks(None, 0)
+        len = self.lib.GetSampleTimes(None, 0)
         if len > 0:
             array = (ct.c_double * len)()
-            self.lib.GetTicks(array, len)
+            self.lib.GetSampleTimes(array, len)
             return list(array)
         return []
 
     def get_frame_times(self):
-        len = self.lib.GetArrivalTimes(self._handle, None, 0)
+        len = self.lib.GetCaptureTimes(self._handle, None, 0)
         if len > 0:
             array = (ct.c_double * len)()
-            self.lib.GetArrivalTimes(self._handle, array, len)
+            self.lib.GetCaptureTimes(self._handle, array, len)
             return list(array)
         return []
-
-    def get_start_delay(self) -> float:
-        return self.lib.GetStartDelay()
 
     def stop(self):
         self._started = False
