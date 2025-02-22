@@ -44,11 +44,12 @@ class VideoRecorder:
         self._monitor: Thread | None = None
         self._stop = False
         self._output = output
+        self._camera: DXCamera | None = None
         self._video_writer: cv2.VideoWriter | None = None
         signal.signal(signal.SIGINT, self._signal_handler)
 
     def _signal_handler(self, sig, frame):
-        self._stop = True
+        self.stop()
 
     def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
         index = 0
@@ -69,6 +70,7 @@ class VideoRecorder:
     def native_encoder(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, memory_cache: bool):
         timer = Timer()
         with DXCamera(x, y, w, h, fps=fps) as camera:
+            self._camera = camera
             frame, timestamp = camera.get_bgr_frame()
             if index == 0:
                 # do a 2 second warm up cycle to ensure video capture is warm
@@ -181,11 +183,14 @@ class VideoRecorder:
             print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
 
     def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
+        self._stop = False
         self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, memory_cache))
         self._thread.start()
 
     def stop(self):
         self._stop = True
+        if self._camera is not None:
+            self._camera.stop_encoding()
         if self._thread is not None:
             self._thread.join()
 

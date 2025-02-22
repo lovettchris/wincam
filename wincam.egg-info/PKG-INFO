@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: wincam
-Version: 1.0.7
+Version: 1.0.8
 Summary: A Python high-performance screenshot library for Windows 10+ using Direct3D11CaptureFramePool.
 Author: lovettchris
 Project-URL: Homepage, https://github.com/lovettchris/wincam
@@ -138,7 +138,6 @@ from wincam import DXCamera, VideoEncodingQuality, EncodingProperties
 fps = 60
 with DXCamera(x, y, w, h, fps=fps) as camera:
     while True:
-        frame, timestamp = camera.get_bgr_frame()
         props = EncodingProperties()
         props.frame_rate = fps
         props.quality = VideoEncodingQuality.HD1080p
@@ -149,6 +148,9 @@ with DXCamera(x, y, w, h, fps=fps) as camera:
 Will create a 60 second video of the screen bounds at 60fps with HD1080p quality. This can make very smooth
 60fps videos at 2560x1440 no problem. You can also get the precise frame capture timings from
 `camera.get_frame_times()`.
+
+To create a variable length video based on other input run the encode_video in a background thread then call
+`camera.stop_encoding()` to stop it.
 
 ## Credits
 

@@ -114,6 +114,9 @@ Will create a 60 second video of the screen bounds at 60fps with HD1080p quality
 60fps videos at 2560x1440 no problem. You can also get the precise frame capture timings from
 `camera.get_frame_times()`.
 
+To create a variable length video based on other input run the encode_video in a background thread then call
+`camera.stop_encoding()` to stop it.
+
 ## Credits
 
 This project was inspired by [dxcam](https://github.com/ra1nty/DXcam) and the
