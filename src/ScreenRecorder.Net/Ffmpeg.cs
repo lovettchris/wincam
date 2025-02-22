@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 
-namespace WpfTestApp
+namespace ScreenRecorder
 {
-    internal class Ffmpeg
+    public class Ffmpeg
     {
         static string ffmpeg = null;
 
-        internal static bool FindFFMPeg()
+        public static bool FindFFMPeg()
         {
             if (string.IsNullOrEmpty(ffmpeg))
             {
@@ -28,7 +23,7 @@ namespace WpfTestApp
             return true;
         }
 
-        internal static async Task<List<string>> SplitVideo(string videoFile, string outputFiles)
+        public static async Task<List<string>> SplitVideo(string videoFile, string outputFiles)
         {
             List<string> frames = new List<string>();
             if (string.IsNullOrEmpty(ffmpeg))
@@ -54,7 +49,7 @@ namespace WpfTestApp
             return new List<string>(Directory.GetFiles(outputFiles));
         }
 
-        internal static async Task<int> EncodeVideo(string videoFile, string inputFrameFolder, int frameRate, string pattern = "frame_%04d.png")
+        public static async Task<int> EncodeVideo(string videoFile, string inputFrameFolder, int frameRate, string pattern = "frame_%04d.png")
         {
             // ffmpeg -i img%04d.png -c:v libx264 -r 25 -pix_fmt yuv420p -c:a copy video_path_output
             var proc = Process.Start(new ProcessStartInfo()

@@ -1,4 +1,5 @@
-﻿using ScreenRecorder.Native;
+﻿using ScreenRecorder;
+using ScreenRecorder.Native;
 using ScreenRecorder.Utilities;
 using System.Diagnostics;
 using System.IO;
@@ -47,12 +48,6 @@ namespace WpfTestApp
         public CalibrationView()
         {
             InitializeComponent();
-            StartTimer();
-        }
-
-        private void StartTimer()
-        {
-            this.reference.Start();
         }
 
         public void OnClosed()
@@ -116,17 +111,19 @@ namespace WpfTestApp
         {
             this.calibrating = true;
             this.Clear();
-            StartTimer();
-        }
-
-        void Clear()
-        {
-            this.DrawingCanvas.Children.Clear();
-            this.shapeEvents.Clear();
+            this.reference.Start();
             // This animating clock ensures the frames keep changing (should be no duplicates).
             this.clockLabel = this.AddLabel(new Point(10, 10), "0:00:00.000", 48, Brushes.Black);
             this.timer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Normal, OnTick, this.Dispatcher);
             this.timer.Start();
+        }
+
+        public void Clear()
+        {
+            this.DrawingCanvas.Children.Clear();
+            this.shapeEvents.Clear();
+            this.clockLabel = null;
+            StopTimer();
         }
 
         private void OnTick(object sender, EventArgs e)
@@ -149,13 +146,19 @@ namespace WpfTestApp
             }
         }
 
-        public event EventHandler<int> Progress;
+        public event EventHandler<ProgressEventArgs> Progress;
 
-        internal void NotifyProgress(int value)
+        internal void NotifyProgress(string message, int value, int maximum)
         {
             if (Progress != null)
             {
-                Progress(this, value);
+                Progress(this, new ProgressEventArgs()
+                {
+                    Messgage = message,
+                    Minimum = 0,
+                    Value = value,
+                    Maximum = maximum
+                });
             }
         }
 
@@ -166,21 +169,26 @@ namespace WpfTestApp
 
         internal void StopCalibrating()
         {
+            this.palette.Reset();
             StopTimer();
             this.calibrating = false;
         }
 
-        internal async Task SyncVideoToShapes(string videoFile, int frameRate)
+        internal async Task SyncVideoToShapes(string videoFile, int frameRate, double[] frameTicks)
         {
             if (!Ffmpeg.FindFFMPeg())
             {
                 return;
             }
+
             if (shapeEvents.Count == 0)
             {
                 return;
             }
-            int startDelayMilliseconds = 0;
+
+            double firstTick = frameTicks.FirstOrDefault();
+
+            int startDelayMilliseconds = (int)(firstTick * 1000);
             var owner = Application.Current.MainWindow;
             var hwnd = new WindowInteropHelper(owner).Handle;
             this.outputFiles = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(videoFile), "frames");
@@ -200,7 +208,7 @@ namespace WpfTestApp
 
             for (var frameIndex = 0; frameIndex < frames.Count; frameIndex++)
             {
-                NotifyProgress(frameIndex);
+                NotifyProgress("", frameIndex, frames.Count);
                 if (closed)
                 {
                     break;
@@ -238,19 +246,8 @@ namespace WpfTestApp
                     if (ColorPalette.IsColorClose(e.color, found))
                     {
                         // found it!!
-                        int ms = (int)((frameIndex * 1000) / frameRate);
+                        int ms = (int)((frameIndex * 1000) / frameRate) + startDelayMilliseconds;
                         int delta = (ms - e.milliseconds);
-                        if (pos == 0)
-                        {
-                            // fudge the first one so it matches, we only care about the delta after this one.
-                            startDelayMilliseconds = delta;
-                            delta = 0;
-                        }
-                        else
-                        {
-                            ms -= startDelayMilliseconds;
-                            delta -= startDelayMilliseconds;
-                        }
                         Debug.WriteLine($"Found shape {pos} at time {ms}, expecting {e.milliseconds}, delta {delta}" +
                             $", found color {GetRgb(found)} expecting color {GetRgb(e.color)}");
                         var text = $"{ms} ({delta})";
@@ -266,27 +263,6 @@ namespace WpfTestApp
                     {
                         Debug.WriteLine($"Frame {frameIndex} at {x},{y} found color {GetRgb(found)} expecting color {GetRgb(e.color)}");
                     }
-
-                    // DEBUGGING find something in the bitmap!
-                    //int skipTitleBar = 40 * stride;
-                    //for (int i = skipTitleBar; i + 3 < pixels.Length; i += 3)
-                    //{
-                    //    y = (i / stride);
-                    //    x = (i - (y * stride)) / bytesPerPixel;
-                    //    if (y > 550)
-                    //    {
-                    //        // skip status bar.
-                    //        break;
-                    //    }
-                    //    r = pixels[i];
-                    //    g = pixels[i + 1];
-                    //    b = pixels[i + 2];
-                    //    if (r < 250 || g < 250 || b < 250) {
-                    //        // found non white pixel at...
-                    //        Debug.WriteLine($"Found non-white pixel {r},{g},{b} at {x},{y}");
-                    //        break;
-                    //    }
-                    //}
                 }
             }
             if (pos < shapeEvents.Count)
@@ -294,7 +270,6 @@ namespace WpfTestApp
                 var msg = $"Missing matches at shape number {pos} of {shapeEvents.Count}";
                 Debug.WriteLine(msg);
                 ShowStatus(msg);
-                ;
                 while (pos < this.shapeEvents.Count)
                 {
                     var e = this.shapeEvents[pos++];
@@ -303,7 +278,9 @@ namespace WpfTestApp
             }
             else
             {
-                ShowStatus("All events matched in the video");
+                var firstMs = (int)(firstTick * 1000);
+                var msg = $"First video frame is off by {startDelayMilliseconds} and the first video tick was {firstMs}";
+                ShowStatus(msg);
             }
         }
 

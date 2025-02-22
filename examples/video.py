@@ -80,14 +80,12 @@ class VideoRecorder:
             self._monitor = Thread(target=lambda: self.monitor_video(camera, max_seconds))
             self._monitor.start()
 
-            props = EncodingProperties()
-            props.bit_rate = 9000000
-            props.frame_rate = fps
-            props.quality = VideoEncodingQuality.HD1080p
-            props.memory_cache = memory_cache
-            props.seconds = max_seconds
+            props = EncodingProperties(frame_rate=fps, quality = VideoEncodingQuality.HD720p, seconds=max_seconds,
+                                       memory_cache = memory_cache)
 
             camera.encode_video(filename, props)
+            print(f"Encoding at bitrate {props.bit_rate} bps")
+
             self._monitor.join()
             print("Video saved to", filename)
             ticks = camera.get_video_ticks()

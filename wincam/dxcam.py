@@ -39,8 +39,8 @@ class VideoEncodingQuality(Enum):
 
 
 class EncodingProperties:
-    def __init__(self, bit_rate: int = 9000000, frame_rate: int = 60, quality: VideoEncodingQuality = VideoEncodingQuality.Auto, seconds: int = 0, memory_cache: bool = False):
-        self.bit_rate = bit_rate
+    def __init__(self, frame_rate: int = 60, quality: VideoEncodingQuality = VideoEncodingQuality.Auto, bit_rate: int = 0, seconds: int = 0, memory_cache: bool = False):
+        self.bit_rate = bit_rate  # if you send bit_rate 0 it will compute the best bitrate from your frame rate and quality and set this field for you.
         self.frame_rate = frame_rate
         self.quality = quality
         self.seconds = seconds
@@ -70,7 +70,7 @@ class DXCamera(Camera):
             raise Exception(f"ScreenCapture.dll not found at: {full_path}")
         self.lib = ct.cdll.LoadLibrary(full_path)
         self.lib.GetCaptureBounds.restype = Rect
-        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, _EncoderPropertiesStruct]
+        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.POINTER(_EncoderPropertiesStruct)]
         self.lib.EncodeVideo.restype = ct.c_uint32
         self.lib.GetTicks.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
         self.lib.GetTicks.restype = ct.c_uint32
@@ -141,6 +141,7 @@ class DXCamera(Camera):
         props.memory_cache = 1 if properties.memory_cache else 0
 
         self.lib.EncodeVideo(self._handle, full_path, props)
+        properties.bit_rate = props.bit_rate
 
     def stop_encoding(self):
         self.lib.StopEncoding()

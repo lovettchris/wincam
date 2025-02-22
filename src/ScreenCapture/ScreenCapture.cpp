@@ -290,11 +290,6 @@ extern "C" {
         return 0;
     }
 
-    double __declspec(dllexport) WINAPI GetStartDelay()
-    {
-        return encoder.GetStartDelay();
-    }
-
     unsigned int __declspec(dllexport) __stdcall  WINAPI GetTicks(double* buffer, unsigned int size)
     {
         return encoder.GetTicks(buffer, size);

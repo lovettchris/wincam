@@ -18,10 +18,6 @@ namespace ScreenRecorder
         /// The video file that was created.
         /// </summary>
         public string FileName;
-        /// <summary>
-        /// A measure of how long it took for video encoding to get started.
-        /// </summary>
-        public double StartDelay;
     }
 
     public enum VideoEncodingQuality : uint
@@ -41,7 +37,7 @@ namespace ScreenRecorder
     [StructLayout(LayoutKind.Sequential)]
     public struct VideoEncoderProperties
     {
-        public uint bitrateInBps; // e.g. 9000000 for 9 mbps.
+        public uint bitrateInBps; // e.g. 9000000 for 9 mbps, or zero to let the system decide.
         public uint frameRate; // e.g 30 or 60
         public VideoEncodingQuality quality;
         public uint seconds; // maximum length before encoding finishes or 0 for infinite.
@@ -89,12 +85,15 @@ namespace ScreenRecorder
         /// </summary>
         /// <param name="file"></param>
         /// <param name="properties"></param>
-        public void EncodeVideo(string file, VideoEncoderProperties properties);
+        public void EncodeVideoNative(string file, VideoEncoderProperties properties);
 
         /// <summary>
         /// Stop an existing video encoding.
         /// </summary>
         public void StopEncoding();
+
+        // Encode a video using software "RawCaptureImageBuffer" instead of using GPU.
+        public Task EncodeVideoFrames(string file, VideoEncoderProperties properties, string outputFolder);
 
         /// <summary>
         /// This event is raised when video encoding is finished and contains the precise

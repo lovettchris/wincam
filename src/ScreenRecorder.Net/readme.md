@@ -20,7 +20,6 @@ You can also record a 20 second video of this region to a file using:
 ```csharp
 VideoEncoderProperties props = new VideoEncoderProperties()
 {
-    bitrateInBps = 9000000,
     frameRate = 60,
     quality = VideoEncodingQuality.HD1080p,
     seconds = 20

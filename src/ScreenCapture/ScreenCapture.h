@@ -36,7 +36,6 @@ extern "C" {
 
     int __declspec(dllexport) WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, VideoEncoderProperties* properties);
     int __declspec(dllexport) WINAPI StopEncoding();
-    double __declspec(dllexport) WINAPI GetStartDelay();
     unsigned int __declspec(dllexport) WINAPI GetTicks(double* buffer, unsigned int size);
     unsigned int __declspec(dllexport) WINAPI GetArrivalTimes(unsigned int captureHandle, double* buffer, unsigned int size);
 }

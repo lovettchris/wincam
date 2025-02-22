@@ -38,6 +38,11 @@ namespace WpfTestApp
 
         int nextColor;
 
+        public void Reset()
+        {
+            this.nextColor = 0;
+        }
+
         public Color GetNextColor()
         {
             var result = palette[nextColor];

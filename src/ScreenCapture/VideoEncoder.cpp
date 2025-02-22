@@ -40,7 +40,6 @@ public:
     bool _stopped = false;
     std::vector<double> _ticks;
     double _maxDuration = 0; // seconds
-    double _delta = 0; // delay from start to first sample.
     bool _running = false;
     util::Timer _sampleTimer;
 
@@ -64,7 +63,40 @@ public:
 
     bool IsRunning() { return _running; }
 
-    double GetStartDelay() { return _delta; }
+    static unsigned int GetBestBitRate(int frameRate, winrt::Windows::Media::MediaProperties::VideoEncodingQuality quality)
+    {
+        if (frameRate != 30 && frameRate != 60) frameRate = 30;
+        int mbps = 0;
+        switch (quality)
+        {
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::HD1080p:
+            mbps = frameRate == 30 ? 16 : 24;
+            break;
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Wvga:
+            mbps = frameRate == 30 ? 3 : 4;
+            break;
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Ntsc:
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Pal:
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Vga:
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Qvga:
+            mbps = frameRate == 30 ? 1 : 2;
+            break;
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Uhd2160p:
+            mbps = frameRate == 30 ? 24 : 36;
+            break;
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Uhd4320p:
+            mbps =  frameRate == 30 ? 36 : 72;
+            break;
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::Auto:
+        case winrt::Windows::Media::MediaProperties::VideoEncodingQuality::HD720p:
+            mbps = frameRate == 30 ? 8 : 12;
+            break;
+        default:
+            mbps = frameRate == 30 ? 5 : 9;
+            break;
+        }
+        return mbps * 1000000;
+    }
 
     winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
         std::shared_ptr<SimpleCapture> capture,
@@ -73,23 +105,28 @@ public:
     {
         _stopped = false;
         _running = true;
+        _ticks.clear();
+        _sampleTimer.Start();
+        _capture = capture;
+
         if (!capture->WaitForNextFrame(10000)) {
             _running = false;
             throw std::exception("frames are not arriving");
         }
-        _ticks.clear();
-        _sampleTimer.Start();
-        _capture = capture;
         auto bounds = capture->GetTextureBounds();
         auto width = bounds.right - bounds.left;
         auto height = bounds.bottom - bounds.top;
-        auto bitrateInBps = properties->bitrateInBps;
         auto frameRate = properties->frameRate;
+        auto quality = (winrt::Windows::Media::MediaProperties::VideoEncodingQuality)(properties->quality);
+        auto bitrateInBps = properties->bitrateInBps;
+        if (bitrateInBps == 0) {
+            bitrateInBps = GetBestBitRate(frameRate, quality);
+            properties->bitrateInBps = bitrateInBps;
+        }
         _maxDuration = properties->seconds;
 
         // Describe mp4 video properties
-        auto qality = (winrt::Windows::Media::MediaProperties::VideoEncodingQuality)(properties->quality);
-        auto encodingProfile = winrt::Windows::Media::MediaProperties::MediaEncodingProfile::CreateMp4(qality);
+        auto encodingProfile = winrt::Windows::Media::MediaProperties::MediaEncodingProfile::CreateMp4(quality);
         encodingProfile.Container().Subtype(L"MPEG4");
         auto videoProperties = encodingProfile.Video();
         videoProperties.Subtype(L"H264");
@@ -146,8 +183,6 @@ public:
     {
         winrt::com_ptr<ID3D11Texture2D> result;
         _capture->ReadNextTexture(10000, result);
-        _delta = _sampleTimer.Seconds();
-        _sampleTimer.Start();
         args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(0)));
     }
 
@@ -160,9 +195,11 @@ public:
         {
             winrt::com_ptr<ID3D11Texture2D> result;
             auto timestamp = _capture->ReadNextTexture(10000, result);
-            auto seconds = timestamp; // _sampleTimer.Seconds();
-            // we could compare timestamp and seconds to see how well the capture rate is doing.
-            _ticks.push_back(seconds);
+            auto seconds = timestamp; // use the time this frame was rendered to sync the video.
+            
+            // but store ticks according to our start time so the user knows how much delay there was getting
+            // the video pipeline up and running.
+            _ticks.push_back(_sampleTimer.Seconds()); 
             if (_maxDuration > 0 && seconds >= _maxDuration) {
                 _stopped = true;
             };
@@ -195,8 +232,6 @@ void VideoEncoder::Stop()
 }
 
 bool VideoEncoder::IsRunning() { return m_pimpl->_running; }
-
-double VideoEncoder::GetStartDelay() { return m_pimpl->_delta; }
 
 unsigned int VideoEncoder::GetTicks(double* buffer, unsigned int size)
 {

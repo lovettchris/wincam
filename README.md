@@ -1,6 +1,7 @@
 # wincam
 
 A fast screen capture library for python on Windows 10 and above (x64 platform only).
+This library can capture frames and encode H264 videos using your GPU.
 
 ```python
 from wincam import DXCamera
@@ -88,12 +89,31 @@ tolerance of +/- 15 milliseconds.  But this more accurate sleep is using a spin 
 `wincam` also has an optimized way to encode videos directly on your GPU so your python code does not have to poll for
 frames and call the opencv VideoWriter.  This results in much smoother videos.
 
-`DXCamera` has an `encode_video` method which takes a a filename, bitrate and framerate.  This method encodes the video
-stream to an H264 encoded .mp4 file.  The method blocks until another thread calls `stop_encoding`.  You can also
-specify a maximum seconds to automatically stop encoding after a certain time and you can use an experimental
-memory_cache that cache all the frames in memory until that time is reached for maximum video smoothness (no dropped frames).
+`DXCamera` has an `encode_video` method which takes a filename, and some EncodingProperties including desired frame
+rate, and VideoEncodingQuality.  This method encodes the video stream to an H264 encoded .mp4 file.  The method blocks
+until another thread calls `stop_encoding`.  You can also specify a maximum seconds to automatically stop encoding after
+a certain time and you can use an experimental memory_cache that cache all the frames in memory until that time is
+reached for maximum video smoothness (no dropped frames).
 
 See the `--native` option on the example `video.py` script for an example.
+
+```pyhton
+from wincam import DXCamera, VideoEncodingQuality, EncodingProperties
+
+fps = 60
+with DXCamera(x, y, w, h, fps=fps) as camera:
+    while True:
+        frame, timestamp = camera.get_bgr_frame()
+        props = EncodingProperties()
+        props.frame_rate = fps
+        props.quality = VideoEncodingQuality.HD1080p
+        props.seconds = 60
+        camera.encode_video(filename, props)
+```
+
+Will create a 60 second video of the screen bounds at 60fps with HD1080p quality. This can make very smooth
+60fps videos at 2560x1440 no problem. You can also get the precise frame capture timings from
+`camera.get_frame_times()`.
 
 ## Credits
 

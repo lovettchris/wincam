@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace WpfTestApp
+namespace ScreenRecorder
 {
     internal class FileHelpers
     {

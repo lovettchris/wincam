@@ -23,8 +23,6 @@ public:
 
     __declspec(dllexport) bool IsRunning();
 
-    __declspec(dllexport) double GetStartDelay();
-
 private:
     std::unique_ptr<VideoEncoderImpl> m_pimpl;
 };
