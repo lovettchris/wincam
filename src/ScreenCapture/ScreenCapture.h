@@ -38,4 +38,6 @@ extern "C" {
     int __declspec(dllexport) WINAPI StopEncoding();
     unsigned int __declspec(dllexport) WINAPI GetSampleTimes(double* buffer, unsigned int size);
     unsigned int __declspec(dllexport) WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size);
+    void __declspec(dllexport) WINAPI SleepMicroseconds(uint64_t microseconds);
+
 }

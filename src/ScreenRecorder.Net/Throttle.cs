@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
+using WpfTestApp;
 
 namespace ScreenRecorder.Utilities
 {
@@ -16,15 +19,21 @@ namespace ScreenRecorder.Utilities
     public class Throttle
     {
         private int fps;
-        private double millisecondsPerFrame;
+        private double microsecondsPerFrame;
         private double previousTime;
+        const int WindowSize = 10;
+        private double[] window = new double[WindowSize];
+        private int windowPos = 0;
+        private double sum = 0;
         private PerfTimer timer = new PerfTimer();
-        const int SleepTolerance = 15;
+        private double slippage;
+
 
         public Throttle(int fps) 
         {
             this.fps = fps;
-            this.millisecondsPerFrame = 1000.0 / fps;
+            this.microsecondsPerFrame = 1000000.0 / fps;
+            this.Reset();
         }
 
         /// <summary>
@@ -32,8 +41,12 @@ namespace ScreenRecorder.Utilities
         /// </summary>
         public double Reset()
         {
-            previousTime = 0;
             timer.Start();
+            previousTime = timer.GetMicroseconds();
+            slippage = 0;
+            windowPos = 0;
+            Array.Fill(window, 0);
+            sum = 0;
             return 0;
         }
 
@@ -47,42 +60,31 @@ namespace ScreenRecorder.Utilities
         /// </summary>
         public double Step()
         {
-            var now = timer.GetMilliseconds();
-            var actualMilliseconds = now - previousTime;
-            var throttle_ms = millisecondsPerFrame - actualMilliseconds;
-            this.Delay(throttle_ms, previousTime);
-            this.previousTime = timer.GetMilliseconds();
-            return this.previousTime / 1000;
-        }
-
-        public double Delay(double milliseconds)
-        {
-            return this.Delay(milliseconds, timer.GetMilliseconds());
-        }
-
-        private double Delay(double milliseconds, double currentTime)
-        {
-            // Thread.Sleep is only accurate to about 15ms (on Windows)
-            if (milliseconds > 0)
+            var now = timer.GetMicroseconds();
+            if (previousTime != 0)
             {
-                if (milliseconds > SleepTolerance)
+                var step_time = now - previousTime;
+                // compute sliding window mean.
+                this.sum -= this.window[windowPos];
+                this.window[windowPos] = step_time;
+                this.sum += step_time;
+                this.windowPos = (this.windowPos + 1) % WindowSize;
+                var smoothed_average = this.sum / WindowSize;
+                var throttle_ms = this.microsecondsPerFrame - smoothed_average;
+                if (throttle_ms > 0)
                 {
-                    var ms = (int)(milliseconds / SleepTolerance) * SleepTolerance;
-                    Thread.Sleep(ms);
-                }
-
-                do
+                    NativeMethods.SleepMicroseconds((long)(throttle_ms));
+                } 
+                else
                 {
-                    // we should be much closer now, we can close the remaining gap
-                    // more accurately with this spin wait.
-                    var actualMilliseconds = timer.GetMilliseconds() - currentTime;
-                    milliseconds = millisecondsPerFrame - actualMilliseconds;
+                    slippage += (throttle_ms / 1000000.0);
                 }
-                while (milliseconds > 0);
             }
-
-            return timer.GetSeconds();
-
+            previousTime = timer.GetMicroseconds();
+            return previousTime;
         }
+
+        public double Slippage => slippage;
+
     }
 }

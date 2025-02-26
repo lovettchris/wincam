@@ -9,7 +9,7 @@ from typing import List
 from common import add_common_args
 import cv2
 
-from wincam import DXCamera, Timer, VideoEncodingQuality, EncodingProperties
+from wincam import DXCamera, EncodingProperties, Timer, VideoEncodingQuality
 
 
 def get_argument_parser():
@@ -26,6 +26,12 @@ def get_argument_parser():
         type=int,
         default=0,
         help="Break up the video into multiple files with this many seconds per video",
+    )
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=0,
+        help="If seconds_per_video is set, this sets the number of recordings to make, default 0 for infinite",
     )
     parser.add_argument("--native", help="use GPU provided video encoder", action="store_true")
     parser.add_argument("--memory", help="use in memory caching for video encoder", action="store_true")
@@ -51,7 +57,9 @@ class VideoRecorder:
     def _signal_handler(self, sig, frame):
         self.stop()
 
-    def video_thread(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
+    def video_thread(
+        self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool
+    ):
         index = 0
         print()
         while not self._stop:
@@ -67,7 +75,9 @@ class VideoRecorder:
             if seconds_per_video == 0:
                 break
 
-    def native_encoder(self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, memory_cache: bool):
+    def native_encoder(
+        self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, memory_cache: bool
+    ):
         timer = Timer()
         with DXCamera(x, y, w, h, fps=fps) as camera:
             self._camera = camera
@@ -82,8 +92,9 @@ class VideoRecorder:
             self._monitor = Thread(target=lambda: self.monitor_video(camera, max_seconds))
             self._monitor.start()
 
-            props = EncodingProperties(frame_rate=fps, quality = VideoEncodingQuality.HD720p, seconds=max_seconds,
-                                       memory_cache = memory_cache)
+            props = EncodingProperties(
+                frame_rate=fps, quality=VideoEncodingQuality.HD720p, seconds=max_seconds, memory_cache=memory_cache
+            )
 
             camera.encode_video(filename, props)
             print(f"Encoding at bitrate {props.bit_rate} bps")
@@ -184,7 +195,9 @@ class VideoRecorder:
 
     def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
         self._stop = False
-        self._thread = Thread(target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, memory_cache))
+        self._thread = Thread(
+            target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, memory_cache)
+        )
         self._thread.start()
 
     def stop(self):

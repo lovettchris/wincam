@@ -15,6 +15,7 @@
 #include "ScreenCapture.h"
 #include "SimpleCapture.h"
 #include "VideoEncoder.h"
+#include "Timer.h"
 #include "Errors.h"
 #undef min
 namespace winrt
@@ -93,6 +94,7 @@ inline auto CreateDirect3DDevice(IDXGIDevice* dxgi_device)
 
 std::mutex m_list_lock;
 std::vector<std::shared_ptr<SimpleCapture>> m_captures;
+util::Timer m_timer;
 
 std::shared_ptr<SimpleCapture> get_capture(unsigned int h)
 {
@@ -310,4 +312,8 @@ extern "C" {
         return 0;
     }
 
+    void __declspec(dllexport) WINAPI SleepMicroseconds(uint64_t microseconds)
+    {
+        m_timer.Sleep(microseconds);
+    }
 }

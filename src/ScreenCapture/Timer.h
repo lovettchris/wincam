@@ -29,7 +29,7 @@ namespace util
         }
 
         // A much more accurate sleep...
-        void Sleep(__int64 usec);
+        void Sleep(int64_t usec);
 
     private:
         int64_t now()

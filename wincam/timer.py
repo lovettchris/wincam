@@ -1,6 +1,8 @@
 import os
 import time
 
+from wincam.native import NativeScreenRecorder
+
 
 class Timer:
     """This class provides accurate timer for recording when user inputs happen
@@ -11,6 +13,7 @@ class Timer:
 
     def __init__(self):
         self._start_time = None
+        self.native = NativeScreenRecorder()
 
     def start(self):
         """Save the start time"""
@@ -33,14 +36,8 @@ class Timer:
 
     def _windows_sleep(self, milliseconds: int):
         # On windows the Win32 Sleep function has an accuracy of about 15ms which is not good enough
-        # so we sleep up to without that tolerance, then spin wait the rest to hit our target.
-        now = self.ticks()
-        if milliseconds > Timer.WINDOWS_SLEEP_ACCURACY_MS:
-            time.sleep(float(milliseconds - Timer.WINDOWS_SLEEP_ACCURACY_MS) / 1000.0)
-
-        # spin wait for the rest.
-        while (self.ticks() - now) * 1000 < milliseconds:
-            pass
+        # so we use a C++ implementation instead that uses WaitableTimer and a spin wait.
+        self.native.sleep_microseconds(milliseconds * 1000)
 
     def _unix_sleep(self, milliseconds: int):
         """Unix sleep call."""

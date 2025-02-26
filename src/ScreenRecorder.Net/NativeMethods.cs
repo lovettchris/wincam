@@ -17,5 +17,8 @@ namespace WpfTestApp
 
         [DllImport("kernel32.dll")]
         public static extern bool FreeLibrary(nint hModule);
+
+        [DllImport("ScreenCapture.dll")]
+        internal static extern void SleepMicroseconds(Int64 microseconds);
     }
 }

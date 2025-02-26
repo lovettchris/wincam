@@ -42,21 +42,21 @@ Timer::~Timer() {
     }
 }
 
-void Timer::Sleep(__int64 usec)
+void Timer::Sleep(int64_t usec)
 {
-    if (usec < 1000) {
-        // for less than millisecond we need to spin wait.
-        auto start = Microseconds();
-		while (Microseconds() - start < usec) {
-            // tradeoff: burn up the core in this tight loop in order to get precise timing...
-        }
-    }
-    else {
+    auto start = Microseconds();
+    if (usec > 1000) {
         // this can do millisecond accurate sleeps
         LARGE_INTEGER period;
         // negative values are for relative time
-        period.QuadPart = -(10 * usec);
+        period.QuadPart = -(10 * (usec - 200));
         SetWaitableTimer(_timer, &period, 0, NULL, NULL, 0);
         WaitForSingleObject(_timer, INFINITE);
+    }
+
+    // for less than millisecond we need to spin wait, this will also correct any remainder
+    // left on the table by the SetWaitableTimer.
+	while (Microseconds() - start < usec) {
+        // tradeoff: burn up the core in this tight loop in order to get precise timing...
     }
 }

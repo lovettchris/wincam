@@ -1,50 +1,14 @@
-import ctypes as ct
 import os
-from typing import Tuple
-from enum import Enum
+from typing import List, Tuple
+
 import cv2
 import numpy as np
 
 from wincam.camera import Camera
+from wincam.native import EncodingProperties, NativeScreenRecorder, Rect
 from wincam.throttle import FpsThrottle
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-
-
-class Rect(ct.Structure):
-    _fields_ = [("x", ct.c_int), ("y", ct.c_int), ("width", ct.c_int), ("height", ct.c_int)]
-
-
-class _EncoderPropertiesStruct(ct.Structure):
-    _fields_ = [("bit_rate", ct.c_uint32), ("frame_rate", ct.c_uint32), ("quality", ct.c_uint32), ("seconds", ct.c_uint32), ("memory_cache", ct.c_uint32)]
-
-
-class EncodingErrorReason(Enum):
-    Unknown = 1
-    InvalidProfile = 2
-    CodecNotFound = 3
-
-
-class VideoEncodingQuality(Enum):
-    Auto = 0
-    HD1080p = 1
-    HD720p = 2
-    Wvga = 3
-    Ntsc = 4
-    Pal = 5
-    Vga = 6
-    Qvga = 7
-    Uhd2160p = 8
-    Uhd4320p = 9
-
-
-class EncodingProperties:
-    def __init__(self, frame_rate: int = 60, quality: VideoEncodingQuality = VideoEncodingQuality.Auto, bit_rate: int = 0, seconds: int = 0, memory_cache: bool = False):
-        self.bit_rate = bit_rate  # if you send bit_rate 0 it will compute the best bitrate from your frame rate and quality and set this field for you.
-        self.frame_rate = frame_rate
-        self.quality = quality
-        self.seconds = seconds
-        self.memory_cache = memory_cache
 
 
 class DXCamera(Camera):
@@ -65,17 +29,7 @@ class DXCamera(Camera):
         self._top = top
         self._capture_cursor = capture_cursor
         self._throttle = FpsThrottle(fps)
-        full_path = os.path.realpath(os.path.join(script_dir, "native", "runtimes", "x64", "ScreenCapture.dll"))
-        if not os.path.exists(full_path):
-            raise Exception(f"ScreenCapture.dll not found at: {full_path}")
-        self.lib = ct.cdll.LoadLibrary(full_path)
-        self.lib.GetCaptureBounds.restype = Rect
-        self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.POINTER(_EncoderPropertiesStruct)]
-        self.lib.EncodeVideo.restype = ct.c_uint32
-        self.lib.GetSampleTimes.argtypes = [ct.POINTER(ct.c_double), ct.c_int]
-        self.lib.GetSampleTimes.restype = ct.c_uint32
-        self.lib.GetCaptureTimes.argtypes = [ct.c_uint32, ct.POINTER(ct.c_double), ct.c_int]
-        self.lib.GetCaptureTimes.restype = ct.c_uint32
+        self._native = NativeScreenRecorder()
         self._started = False
         self._buffer = None
         self._size = 0
@@ -98,17 +52,19 @@ class DXCamera(Camera):
 
     def get_bgr_frame(self) -> Tuple[np.ndarray, float]:
         if not self._started:
-            self._handle = self.lib.StartCapture(self._left, self._top, self._width, self._height, self._capture_cursor)
-            if not self.lib.WaitForNextFrame(self._handle, 10000):
+            self._handle = self._native.start_capture(
+                self._left, self._top, self._width, self._height, self._capture_cursor
+            )
+            if not self._native.wait_for_next_frame(self._handle, 10000):
                 raise Exception("Frames are not being captured")
 
-            self._capture_bounds = self.lib.GetCaptureBounds(self._handle)
+            self._capture_bounds = self._native.get_capture_bounds(self._handle)
             self._size = self._capture_bounds.width * self._capture_bounds.height * 4
-            self._buffer = ct.create_string_buffer(self._size)  # type: ignore
+            self._buffer = self._native.create_buffer(self._size)
             self._started = True
             self._throttle.reset()
 
-        timestamp = self.lib.ReadNextFrame(self._handle, self._buffer, len(self._buffer))
+        timestamp = self._native.read_next_frame(self._handle, self._buffer, len(self._buffer))
         image = np.reshape(
             np.frombuffer(self._buffer, dtype=np.uint8), (self._capture_bounds.height, self._capture_bounds.width, 4)
         )
@@ -132,38 +88,23 @@ class DXCamera(Camera):
         if properties.memory_cache and properties.seconds == 0:
             raise Exception("You must specify a max seconds that will fit in memory if you enable the memory_cache.")
 
-        props = _EncoderPropertiesStruct()
-        props.bit_rate = properties.bit_rate
-        props.frame_rate = properties.frame_rate
-        props.quality = properties.quality.value
-        props.seconds = properties.seconds
-        props.memory_cache = 1 if properties.memory_cache else 0
-
-        self.lib.EncodeVideo(self._handle, full_path, props)
-        properties.bit_rate = props.bit_rate
+        self._native.encode_video(self._handle, full_path, properties)
 
     def stop_encoding(self):
-        self.lib.StopEncoding()
+        self._native.stop_encoding()
 
-    def get_video_ticks(self):
-        len = self.lib.GetSampleTimes(None, 0)
-        if len > 0:
-            array = (ct.c_double * len)()
-            self.lib.GetSampleTimes(array, len)
-            return list(array)
-        return []
+    def stop_capture(self):
+        self._native.stop_capture(self._handle)
+        self._handle = -1
 
-    def get_frame_times(self):
-        len = self.lib.GetCaptureTimes(self._handle, None, 0)
-        if len > 0:
-            array = (ct.c_double * len)()
-            self.lib.GetCaptureTimes(self._handle, array, len)
-            return list(array)
-        return []
+    def get_video_ticks(self) -> List[float]:
+        return self._native.get_sample_times()
+
+    def get_frame_times(self) -> List[float]:
+        return self._native.get_capture_times(self._handle)
 
     def stop(self):
         self._started = False
-        self.lib.StopEncoding()
-        self.lib.StopCapture(self._handle)
+        self.stop_encoding()
+        self.stop_capture()
         self._buffer = None
-        self._handle = -1

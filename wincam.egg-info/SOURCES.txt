@@ -12,6 +12,7 @@ wincam/camera.py
 wincam/desktop.py
 wincam/dxcam.py
 wincam/logger.py
+wincam/native.py
 wincam/throttle.py
 wincam/timer.py
 wincam.egg-info/PKG-INFO
