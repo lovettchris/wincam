@@ -9,11 +9,6 @@ extern "C" {
     double __declspec(dllexport) WINAPI ReadNextFrame(unsigned int handle, char* buffer, unsigned int size);
     bool __declspec(dllexport)  WINAPI WaitForNextFrame(unsigned int handle, int timeout);
 
-    // EncodeVideo error return codes.
-    const int ReasonUnknown = 1;
-    const int ReasonInvalidProfile = 2;
-    const int ReasonCodecNotFound = 3;
-
     const int VideoEncodingQualityAuto = 0;
     const int VideoEncodingQualityHD1080p = 1;
     const int VideoEncodingQualityHD720p = 2;
@@ -39,5 +34,6 @@ extern "C" {
     unsigned int __declspec(dllexport) WINAPI GetSampleTimes(double* buffer, unsigned int size);
     unsigned int __declspec(dllexport) WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size);
     void __declspec(dllexport) WINAPI SleepMicroseconds(uint64_t microseconds);
+    LPCSTR __declspec(dllexport) WINAPI GetErrorMessage(int hr);
 
 }

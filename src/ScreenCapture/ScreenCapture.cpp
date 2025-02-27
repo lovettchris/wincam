@@ -165,17 +165,20 @@ static winrt::Windows::Foundation::IAsyncOperation<uint64_t> CopyStreams(
     co_return totalBytes;
 }
 
+const int ERROR_ENCODER_BUSY = -1;
+const int ERROR_UNBOUNDED_MEMORY_CACHE = -2;
+
 static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shared_ptr<SimpleCapture> capture, const WCHAR* fullPath, VideoEncoderProperties* properties)
 {
     if (encoder.IsRunning()) {
-        throw new std::exception("Another encoder is running, you can encode one video at a time");
+        co_return ERROR_ENCODER_BUSY;
     }
     std::filesystem::path fsPath(fullPath);
     auto path = fsPath.parent_path().wstring();
     auto filename = fsPath.filename().wstring();
     if (properties->memory_cache > 0) {
         if (properties->seconds == 0) {
-            throw new std::exception("The memory_cache option requires a fixed duration in seconds.");
+            co_return ERROR_UNBOUNDED_MEMORY_CACHE;            
         }
     }
 
@@ -303,7 +306,7 @@ extern "C" {
         if (ptr != nullptr) {
             auto arrivals = ptr->GetCaptureTimes();
             auto available = (unsigned int)arrivals.size();
-            if (buffer != nullptr) {
+            if (buffer != nullptr && available > 0) {
                 auto count = std::min(available, size);
                 ::memcpy(buffer, arrivals.data(), count * sizeof(double));
             }
@@ -316,4 +319,16 @@ extern "C" {
     {
         m_timer.Sleep(microseconds);
     }
+
+    LPCSTR __declspec(dllexport) WINAPI GetErrorMessage(int hr)
+    {
+        if (hr == ERROR_ENCODER_BUSY) {
+            return "Another encoder is running, you can encode one video at a time";
+        }
+        else if (hr == ERROR_UNBOUNDED_MEMORY_CACHE) {
+            return "You cannot use a memory cache without a maximum duration";
+        }
+        return encoder.GetErrorMessage(hr);
+    }
+
 }

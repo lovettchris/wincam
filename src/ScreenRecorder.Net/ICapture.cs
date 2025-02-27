@@ -94,6 +94,7 @@ namespace ScreenRecorder
 
         // Encode a video using software "RawCaptureImageBuffer" instead of using GPU.
         public Task EncodeVideoFrames(string file, VideoEncoderProperties properties, string outputFolder);
+        public string GetErrorMessage(int hResult);
 
         /// <summary>
         /// This event is raised when video encoding is finished and contains the precise
