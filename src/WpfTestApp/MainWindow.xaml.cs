@@ -6,6 +6,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -109,6 +110,7 @@ namespace WpfTestApp
             var c = new Capture();
             c.EncodingCompleted += OnEncodingCompleted;
             c.ProgressUpdate += OnProgressUpdate;
+            c.EncodingError += OnEncodingError;
             this.capture = c;
             ShowStatus("Initializing...");
             int w = bounds.Right - bounds.Left;
@@ -163,7 +165,7 @@ namespace WpfTestApp
                             throttle.Reset();
                         }
                         else
-                        {
+                        { 
                             await Dispatcher.InvokeAsync(new Action(() =>
                             {
                                 var img = c.CaptureImage();
@@ -241,6 +243,21 @@ namespace WpfTestApp
             }));
         }
 
+        private void OnEncodingError(object sender, Exception e)
+        {
+            var msg = e.Message;
+            if (e is COMException ex)
+            {
+                msg = this.capture.GetErrorMessage(e.HResult); 
+            }
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                MessageBox.Show(msg, "Encoding Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.encoding = false;
+                UpdateButtonState();
+            }));
+        }
+
         private void ProcessFrameTicks(double[] ticks, double[] samples, string videoFileName)
         {
             var folder = System.IO.Path.GetDirectoryName(videoFileName);
@@ -261,11 +278,14 @@ namespace WpfTestApp
                 var step = ticks[i] - ticks[i - 1];
                 steps.Add(step);
             }
-            var min = steps.Min();
-            var max = steps.Max();
-            var avg = steps.Average();
-            var msg = $"Frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
-            Debug.WriteLine(msg);
+            if (steps.Count > 0)
+            {
+                var min = steps.Min();
+                var max = steps.Max();
+                var avg = steps.Average();
+                var msg = $"Frame step times, min: {min:F3}, max: {max:F3}, avg: {avg:F3}";
+                Debug.WriteLine(msg);
+            }
         }
 
         private void OnStop(object sender, RoutedEventArgs e)
@@ -439,9 +459,7 @@ namespace WpfTestApp
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Encoding Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    this.encoding = false;
-                    UpdateButtonState();
+                    this.OnEncodingError(this, ex);
                 }
             }
         }

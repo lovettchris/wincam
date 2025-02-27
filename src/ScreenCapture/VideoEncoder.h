@@ -4,7 +4,24 @@
 #include <winrt/Windows.Media.Core.h>
 #include <winrt/Windows.Storage.Streams.h>
 
-class VideoEncoderImpl;
+class VideoEncoderImpl
+{
+public:
+    virtual winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
+        std::shared_ptr<SimpleCapture> capture,
+        VideoEncoderProperties* properties,
+        winrt::Windows::Storage::Streams::IRandomAccessStream stream) = 0;
+
+    virtual void Stop() = 0;
+
+    virtual unsigned int GetSampleTimes(double* buffer, unsigned int size) = 0;
+
+    virtual bool IsRunning() = 0;
+
+    unsigned int GetBestBitRate(int frameRate, int  quality);
+
+    virtual const char* GetErrorMessage(int hr) = 0;
+};
 
 class VideoEncoder
 {
@@ -22,6 +39,8 @@ public:
     __declspec(dllexport) unsigned int GetSampleTimes(double* buffer, unsigned int size);
 
     __declspec(dllexport) bool IsRunning();
+
+    __declspec(dllexport) const char* GetErrorMessage(int hr);
 
 private:
     std::unique_ptr<VideoEncoderImpl> m_pimpl;

@@ -31,6 +31,9 @@ public:
 
     __declspec(dllexport) std::vector<double> GetCaptureTimes();
 
+    // C++ only interface.
+    void ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size);
+
 private:
     std::unique_ptr<SimpleCaptureImpl> m_pimpl;
 };

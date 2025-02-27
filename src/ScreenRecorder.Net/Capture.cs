@@ -127,6 +127,22 @@ public class Capture : ICapture
         CaptureNative.StopEncoding();
     }
 
+    private void NotifyError(int hr)
+    {
+        var errorHandler = this.EncodingError;
+        if (errorHandler != null)
+        {
+            errorHandler(this, new COMException("Encoding Errror", hr));
+        }
+    }
+
+    public string GetErrorMessage(int hr)
+    {
+        nint ptr = CaptureNative.GetErrorMessage(hr);
+        // Convert the IntPtr to a string
+        return Marshal.PtrToStringAnsi(ptr);
+    }
+
     public void EncodeVideoNative(string file, VideoEncoderProperties properties)
     {
         file = System.IO.Path.GetFullPath(file);
@@ -147,15 +163,16 @@ public class Capture : ICapture
             try
             {
                 // Call the native ScreenCapture library.
-                CaptureNative.EncodeVideo(this.captureHandle, file, ref properties);
+                int rc = CaptureNative.EncodeVideo(this.captureHandle, file, ref properties);
+                if (rc != 0)
+                {
+                    NotifyError(rc);
+                    return;
+                }
             }
             catch (Exception ex)
             {
-                var errorHandler = this.EncodingError;
-                if (errorHandler != null)
-                {
-                    errorHandler(this, ex);
-                }
+                Debug.WriteLine($"Unexpected exception : {ex}");
             }
 
             encoding = false;
@@ -312,5 +329,8 @@ class CaptureNative
 
     [DllImport("ScreenCapture.dll")]
     internal static extern uint GetCaptureTimes(uint captureHandle, double[] buffer, uint size);
+
+    [DllImport("ScreenCapture.dll")]
+    internal static extern nint GetErrorMessage(int hr);
 
 }

@@ -497,6 +497,11 @@ std::vector<double> SimpleCapture::GetCaptureTimes()
     return m_pimpl->m_arrivalTimes;
 }
 
+void SimpleCapture::ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size)
+{
+    m_pimpl->ReadPixels(texture, buffer, size);
+}
+
 void SimpleCapture::StartCapture(
     winrt::IDirect3DDevice const& device,
     winrt::GraphicsCaptureItem const& item,
