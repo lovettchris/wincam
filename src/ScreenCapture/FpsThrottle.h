@@ -7,7 +7,7 @@ namespace util
     {
     private:
         Timer _timer;
-        int _fps = 0;
+        double _fps = 0;
         bool _started = false;
         double _start_time = 0;
         int _step_count = 0;
@@ -15,7 +15,7 @@ namespace util
 
     public:
         FpsThrottle(int fps) {
-            _fps = fps;
+            _fps = static_cast<double>(fps);
         }
 
         void Reset() {
@@ -27,20 +27,20 @@ namespace util
 
 
         void Step() {
+            _step_count += 1;
             double throttle_ms = 0;
             if (!_started) {
                 _started = true;
-                _start_time = _timer.Microseconds();
+                _start_time = _timer.Seconds();
             }
             else {
-                double elapsed = (_timer.Microseconds() - _start_time);
-                double expected = (_step_count * 1000000.0) / _fps;
-                double throttle_ms = expected - elapsed;
+                double elapsed = (_timer.Seconds() - _start_time);
+                double expected = ((double)_step_count / _fps);
+                throttle_ms = (expected - elapsed);
             }
-            _step_count += 1;
             // sync to match the given frame rate.
             if (throttle_ms > 0) {
-                _timer.Sleep(static_cast<int64_t>(throttle_ms)); // Sleep expects microseconds
+                _timer.Sleep(static_cast<int64_t>(throttle_ms * 1000000.0)); // Sleep expects microseconds
             }
         }
     };

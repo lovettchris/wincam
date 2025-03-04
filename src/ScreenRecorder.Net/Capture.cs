@@ -177,12 +177,12 @@ public class Capture : ICapture
 
             encoding = false;
             var size = CaptureNative.GetSampleTimes(null, 0);
-            double[] buffer = new double[size];
-            CaptureNative.GetSampleTimes(buffer, size);
+            double[] samples = new double[size];
+            CaptureNative.GetSampleTimes(samples, size);
 
             size = CaptureNative.GetCaptureTimes(this.captureHandle, null, 0);
-            double[] samples = new double[size];
-            CaptureNative.GetCaptureTimes(this.captureHandle, samples, size);
+            double[] frames = new double[size];
+            CaptureNative.GetCaptureTimes(this.captureHandle, frames, size);
 
             var handler = this.EncodingCompleted;
             if (handler != null && !disposed)
@@ -190,7 +190,7 @@ public class Capture : ICapture
                 handler(this, new EncodingStats()
                 {
                     FileName = file,
-                    FrameTicks = buffer,
+                    FrameTicks = frames,
                     SampleTicks = samples,
                 });
             }

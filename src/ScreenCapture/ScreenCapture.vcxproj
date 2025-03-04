@@ -283,6 +283,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClInclude Include="Timer.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SimpleCapture.h" />
+    <ClInclude Include="UnicodeFile.h" />
     <ClInclude Include="VideoEncoder.h" />
     <ClInclude Include="WindowsEncoder.h" />
   </ItemGroup>

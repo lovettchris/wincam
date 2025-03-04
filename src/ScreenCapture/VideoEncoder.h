@@ -1,8 +1,6 @@
 #pragma once
 #include "SimpleCapture.h"
 #include "ScreenCapture.h"
-#include <winrt/Windows.Media.Core.h>
-#include <winrt/Windows.Storage.Streams.h>
 
 class VideoEncoderImpl
 {
@@ -10,7 +8,7 @@ public:
     virtual winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
         std::shared_ptr<SimpleCapture> capture,
         VideoEncoderProperties* properties,
-        winrt::Windows::Storage::Streams::IRandomAccessStream stream) = 0;
+        std::wstring filePath) = 0;
 
     virtual void Stop() = 0;
 
@@ -32,7 +30,7 @@ public:
     __declspec(dllexport) winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
         std::shared_ptr<SimpleCapture> capture,
         VideoEncoderProperties* properties,
-        winrt::Windows::Storage::Streams::IRandomAccessStream stream);
+        std::wstring filePath);
 
     __declspec(dllexport) void Stop();
 
@@ -43,5 +41,7 @@ public:
     __declspec(dllexport) const char* GetErrorMessage(int hr);
 
 private:
+    void CreateImpl();
     std::unique_ptr<VideoEncoderImpl> m_pimpl;
+    bool _ffmpeg;
 };

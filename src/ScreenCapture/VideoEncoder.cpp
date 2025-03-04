@@ -40,8 +40,23 @@ unsigned int VideoEncoderImpl::GetBestBitRate(int frameRate, int quality)
 
 VideoEncoder::VideoEncoder()
 {
+    _ffmpeg = true;
+    CreateImpl();
+}
+
+void VideoEncoder::CreateImpl()
+{
+    if (_ffmpeg) {
+        auto instance = LoadLibrary(L"avcodec-61.dll");
+        if (instance != NULL) {
+            FreeLibrary(instance);
+            m_pimpl = CreateFFmpegEncoder();
+            _ffmpeg = true;
+            return;
+        }
+    }
+    _ffmpeg = false;
     m_pimpl = CreateWindowsEncoder();
-    // m_pimpl = CreateFFmpegEncoder();
 }
 
 VideoEncoder::~VideoEncoder()
@@ -63,9 +78,14 @@ unsigned int VideoEncoder::GetSampleTimes(double* buffer, unsigned int size)
 winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
     std::shared_ptr<SimpleCapture> capture,
     VideoEncoderProperties* properties,
-    winrt::Windows::Storage::Streams::IRandomAccessStream stream)
+    std::wstring filePath)
 {
-	return m_pimpl->EncodeAsync(capture, properties, stream);
+    bool request_ffmpeg = (properties->ffmpeg == 1);
+    if (_ffmpeg != request_ffmpeg) {
+        CreateImpl();
+    }
+    properties->ffmpeg = _ffmpeg ? 1 : 0;
+    return m_pimpl->EncodeAsync(capture, properties, filePath);
 }
 
 const char* VideoEncoder::GetErrorMessage(int hr)

@@ -26,7 +26,7 @@ extern "C" {
         unsigned int frameRate; // e.g 30 or 60
         unsigned int quality; // see above
         unsigned int seconds; // maximum length before encoding finishes or 0 for infinite.
-        unsigned int memory_cache; // 1=use in-memory caching so no disk activity until encoding is done.
+        unsigned int ffmpeg; // 1=use ffmpeg, returns 0 if ffmpeg is not found.
     };
 
     int __declspec(dllexport) WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, VideoEncoderProperties* properties);

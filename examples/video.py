@@ -34,7 +34,7 @@ def get_argument_parser():
         help="If seconds_per_video is set, this sets the number of recordings to make, default 0 for infinite",
     )
     parser.add_argument("--native", help="use GPU provided video encoder", action="store_true")
-    parser.add_argument("--memory", help="use in memory caching for video encoder", action="store_true")
+    parser.add_argument("--windows", help="use in windows transcoder (defaults to ffmpeg)", action="store_true")
     return parser
 
 
@@ -58,7 +58,7 @@ class VideoRecorder:
         self.stop()
 
     def video_thread(
-        self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool
+        self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, ffmpeg: bool
     ):
         index = 0
         print()
@@ -67,7 +67,7 @@ class VideoRecorder:
             if index > 0:
                 filename = os.path.splitext(filename)[0] + f"_{index}.mp4"
             if native:
-                self.native_encoder(filename, x, y, w, h, fps, seconds_per_video, index, memory_cache)
+                self.native_encoder(filename, x, y, w, h, fps, seconds_per_video, index, ffmpeg)
             else:
                 self.record_video(filename, x, y, w, h, fps, seconds_per_video, index)
 
@@ -76,7 +76,7 @@ class VideoRecorder:
                 break
 
     def native_encoder(
-        self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, memory_cache: bool
+        self, filename: str, x: int, y: int, w: int, h: int, fps: int, max_seconds: int, index: int, ffmpeg: bool
     ):
         timer = Timer()
         with DXCamera(x, y, w, h, fps=fps) as camera:
@@ -91,9 +91,10 @@ class VideoRecorder:
 
             self._monitor = Thread(target=lambda: self.monitor_video(camera, max_seconds))
             self._monitor.start()
+            request_ffmpeg = 1 if ffmpeg else 0
 
             props = EncodingProperties(
-                frame_rate=fps, quality=VideoEncodingQuality.HD720p, seconds=max_seconds, memory_cache=memory_cache
+                frame_rate=fps, quality=VideoEncodingQuality.HD720p, seconds=max_seconds, ffmpeg=request_ffmpeg
             )
 
             camera.encode_video(filename, props)
@@ -193,10 +194,10 @@ class VideoRecorder:
             avg_step = sum(ticks) / len(ticks)
             print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
 
-    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, memory_cache: bool):
+    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, ffmpeg: bool):
         self._stop = False
         self._thread = Thread(
-            target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, memory_cache)
+            target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, ffmpeg)
         )
         self._thread.start()
 
@@ -236,7 +237,7 @@ def main():
         x, y, w, h = desktop.find(pid)
 
     recorder = VideoRecorder(args.output)
-    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native, args.memory)
+    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native, not args.windows)
     input("Press ENTER to stop recording...")
     recorder.stop()
 

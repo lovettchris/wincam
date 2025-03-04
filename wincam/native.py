@@ -16,7 +16,7 @@ class _EncoderPropertiesStruct(ct.Structure):
         ("frame_rate", ct.c_uint32),
         ("quality", ct.c_uint32),
         ("seconds", ct.c_uint32),
-        ("memory_cache", ct.c_uint32),
+        ("ffmpeg", ct.c_uint32),
     ]
 
 
@@ -46,7 +46,7 @@ class EncodingProperties:
         quality: VideoEncodingQuality = VideoEncodingQuality.Auto,
         bit_rate: int = 0,
         seconds: int = 0,
-        memory_cache: bool = False,
+        ffmpeg: int = 1,
     ):
         # if you send bit_rate 0 it will compute the best bitrate from your frame rate and quality and set this field
         # for you which you can then query after calling start_encoding.
@@ -54,7 +54,7 @@ class EncodingProperties:
         self.frame_rate = frame_rate
         self.quality = quality
         self.seconds = seconds
-        self.memory_cache = memory_cache
+        self.ffmpeg = ffmpeg
 
 
 class NativeScreenRecorder:
@@ -62,6 +62,7 @@ class NativeScreenRecorder:
         full_path = os.path.realpath(os.path.join(script_dir, "native", "runtimes", "x64", "ScreenCapture.dll"))
         if not os.path.exists(full_path):
             raise Exception(f"ScreenCapture.dll not found at: {full_path}")
+
         self.lib = ct.cdll.LoadLibrary(full_path)
         self.lib.GetCaptureBounds.restype = Rect
         self.lib.EncodeVideo.argtypes = [ct.c_uint32, ct.c_wchar_p, ct.POINTER(_EncoderPropertiesStruct)]
@@ -96,10 +97,11 @@ class NativeScreenRecorder:
         props.frame_rate = properties.frame_rate
         props.quality = properties.quality.value
         props.seconds = properties.seconds
-        props.memory_cache = 1 if properties.memory_cache else 0
+        props.ffmpeg = properties.ffmpeg
 
         result = self.lib.EncodeVideo(handle, file_name, ct.byref(props))
         properties.bit_rate = props.bit_rate
+        properties.ffmpeg = props.ffmpeg
         return result
 
     def stop_encoding(self) -> None:

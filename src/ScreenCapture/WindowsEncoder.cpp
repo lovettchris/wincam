@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <wrl/event.h>
 #include <stdio.h>
+#include <filesystem>
 #include <Objbase.h>
 #include "WindowsEncoder.h"
 #include "Timer.h"
@@ -10,6 +11,7 @@
 #include <winrt/Windows.Media.Transcoding.h>
 #include <Windows.Foundation.h>
 #include <Windows.System.Threading.h>
+#define D3D11_NO_HELPERS
 #include <d3d11.h>
 #include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
 #include <Windows.graphics.directx.direct3d11.interop.h>
@@ -71,7 +73,7 @@ public:
     winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
         std::shared_ptr<SimpleCapture> capture,
         VideoEncoderProperties* properties,
-        winrt::Windows::Storage::Streams::IRandomAccessStream stream) override
+        std::wstring filePath) override
     {
         _stopped = false;
         _running = true;
@@ -116,6 +118,15 @@ public:
         streamProperties.Bitrate(bitrateInBps);
         VideoStreamDescriptor videoDescriptor(streamProperties);
 
+        // Open our output file
+        std::filesystem::path fsPath(filePath);
+        auto path = fsPath.parent_path().wstring();
+        auto filename = fsPath.filename().wstring();
+        int rc = 0;
+        auto folder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(path);
+        auto file = co_await folder.CreateFileAsync(filename);
+        auto stream = co_await file.OpenAsync(winrt::Windows::Storage::FileAccessMode::ReadWrite);
+
         // Create our MediaStreamSource
         MediaStreamSource mediaStreamSource(videoDescriptor);
         winrt::event_token token1 = mediaStreamSource.Starting({ this, &MediaTranscoderImpl::OnVideoStarting });
@@ -136,7 +147,8 @@ public:
             mediaStreamSource.Starting(token1);
             mediaStreamSource.SampleRequested(token2);
             _capture = nullptr;
-            _running = false;
+            _running = false;  
+
         }
         catch (const std::exception& ex)
         {
@@ -147,6 +159,8 @@ public:
             _running = false;
             result = ERROR_UNKNOWN;
         }
+        co_await stream.FlushAsync();
+        stream.Close();
         co_return result;
     }
 

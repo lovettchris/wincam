@@ -41,7 +41,7 @@ namespace ScreenRecorder
         public uint frameRate; // e.g 30 or 60
         public VideoEncodingQuality quality;
         public uint seconds; // maximum length before encoding finishes or 0 for infinite.
-        public uint memory_cache; // 1=use in-memory caching so no disk activity until encoding is done.
+        public uint ffmpeg; // 1=use ffmpeg, returns 0 if ffmpeg is not found.
     };
 
     public interface ICapture : IDisposable

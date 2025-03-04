@@ -2,7 +2,6 @@
 using ScreenRecorder;
 using ScreenRecorder.Native;
 using ScreenRecorder.Utilities;
-using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -10,13 +9,12 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace WpfTestApp
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml.
+    /// Interaction logic for MainWindow.xaml. 
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -30,7 +28,7 @@ namespace WpfTestApp
         uint frameRate;
         RECT bounds;
         DispatcherTimer showDurationTimer;
-        DateTime startTime;
+        DateTime startTime; 
         bool calibrating;
         nint hwnd;
         DelayedActions actions = new DelayedActions();
@@ -83,10 +81,13 @@ namespace WpfTestApp
 
         private async Task StopCapture()
         {
-            capturing = false;
-            while (this.capture != null)
+            if (capturing)
             {
-                await Task.Delay(100);
+                capturing = false;
+                while (this.capture != null)
+                {
+                    await Task.Delay(100);
+                }
             }
             this.capturing = false;
             UpdateButtonState();
@@ -112,7 +113,7 @@ namespace WpfTestApp
             c.ProgressUpdate += OnProgressUpdate;
             c.EncodingError += OnEncodingError;
             this.capture = c;
-            ShowStatus("Initializing...");
+            ShowStatus("Initializing....");
             int w = bounds.Right - bounds.Left;
             int h = bounds.Bottom - bounds.Top;
             await c.StartCapture(this.x, this.y, w, h, 10000);
@@ -217,7 +218,7 @@ namespace WpfTestApp
                 this.ShowStatus($"average fps {avg}");
             }
         }
-
+         
         private void OnEncodingCompleted(object sender, EncodingStats e)
         {
             var ticks = e.FrameTicks;
@@ -238,7 +239,7 @@ namespace WpfTestApp
                 }
                 else
                 {
-                    // MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand);
+                    // MessageBox.Show(msg, "Video completed", MessageBoxButton.OK, MessageBoxImage.Hand); 
                 }
             }));
         }
@@ -437,11 +438,11 @@ namespace WpfTestApp
                         bitrateInBps = 0,
                         frameRate = this.frameRate,
                         quality = VideoEncodingQuality.HD720p,
-                        memory_cache = (uint)((seconds > 0 && seconds <= 600 && native) ? 1 : 0),
                         seconds = seconds,
+                        ffmpeg = 1,
                     };
 
-                    // kicks off an internal async task.
+                    // kicks off an internal async task
                     if (native) 
                     {
                         this.capture.EncodeVideoNative(file, properties);
