@@ -9,11 +9,6 @@ extern "C" {
     double __declspec(dllexport) WINAPI ReadNextFrame(unsigned int handle, char* buffer, unsigned int size);
     bool __declspec(dllexport)  WINAPI WaitForNextFrame(unsigned int handle, int timeout);
 
-    // EncodeVideo error return codes.
-    const int ReasonUnknown = 1;
-    const int ReasonInvalidProfile = 2;
-    const int ReasonCodecNotFound = 3;
-
     const int VideoEncodingQualityAuto = 0;
     const int VideoEncodingQualityHD1080p = 1;
     const int VideoEncodingQualityHD720p = 2;
@@ -31,7 +26,7 @@ extern "C" {
         unsigned int frameRate; // e.g 30 or 60
         unsigned int quality; // see above
         unsigned int seconds; // maximum length before encoding finishes or 0 for infinite.
-        unsigned int memory_cache; // 1=use in-memory caching so no disk activity until encoding is done.
+        unsigned int ffmpeg; // 1=use ffmpeg, returns 0 if ffmpeg is not found.
     };
 
     int __declspec(dllexport) WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, VideoEncoderProperties* properties);
@@ -39,5 +34,6 @@ extern "C" {
     unsigned int __declspec(dllexport) WINAPI GetSampleTimes(double* buffer, unsigned int size);
     unsigned int __declspec(dllexport) WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size);
     void __declspec(dllexport) WINAPI SleepMicroseconds(uint64_t microseconds);
+    LPCSTR __declspec(dllexport) WINAPI GetErrorMessage(int hr);
 
 }

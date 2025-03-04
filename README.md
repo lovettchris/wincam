@@ -92,8 +92,7 @@ frames and call the opencv VideoWriter.  This results in much smoother videos.
 `DXCamera` has an `encode_video` method which takes a filename, and some EncodingProperties including desired frame
 rate, and VideoEncodingQuality.  This method encodes the video stream to an H264 encoded .mp4 file.  The method blocks
 until another thread calls `stop_encoding`.  You can also specify a maximum seconds to automatically stop encoding after
-a certain time and you can use an experimental memory_cache that cache all the frames in memory until that time is
-reached for maximum video smoothness (no dropped frames).
+a certain time.
 
 See the `--native` option on the example `video.py` script for an example.
 

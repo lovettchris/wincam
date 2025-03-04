@@ -190,14 +190,14 @@ public:
     {
         if (m_closed) {
             debug_hresult(L"ReadNextFrame: Capture is closed", E_FAIL, true);
-            return 0;
+            return -1;
         }
 
         // wait for next frame
         int hr = WaitForMultipleObjects(1, &m_event, TRUE, timeout);
         if (hr == WAIT_TIMEOUT) {
             printf("timeout waiting for FrameArrived event\n");
-            return 0;
+            return -1;
         }
         double frameTime = 0;
         {
@@ -407,24 +407,20 @@ public:
 
         texture->GetDesc(&desc);
         if (desc.SampleDesc.Count != 1) {
-            printf("SampleDesc.Count != 1\n");
-            return;
+            throw std::exception("SampleDesc.Count != 1\n");
         }
         if (desc.MipLevels != 1) {
-            printf("MipLevels != 1\n");
-            return;
+            throw std::exception("MipLevels != 1\n");
         }
         if (desc.ArraySize != 1) {
-            printf("ArraySize != 1\n");
-            return;
+            throw std::exception("ArraySize != 1\n");
         }
 
         desc.Usage = D3D11_USAGE_STAGING; // A resource that supports data transfer (copy) from the GPU to the CPU.
         desc.BindFlags = 0;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         if (desc.Format != DXGI_FORMAT_B8G8R8A8_UNORM) {
-            printf("Format != DXGI_FORMAT_B8G8R8A8_UNORM\n");
-            return;
+            throw std::exception("Format != DXGI_FORMAT_B8G8R8A8_UNORM\n");
         }
 
         HRESULT hr = m_d3dDevice->CreateTexture2D(&desc, NULL, copiedImage.put());
@@ -495,6 +491,11 @@ RECT SimpleCapture::GetTextureBounds()
 std::vector<double> SimpleCapture::GetCaptureTimes()
 {
     return m_pimpl->m_arrivalTimes;
+}
+
+void SimpleCapture::ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size)
+{
+    m_pimpl->ReadPixels(texture, buffer, size);
 }
 
 void SimpleCapture::StartCapture(

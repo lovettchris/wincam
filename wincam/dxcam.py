@@ -85,9 +85,6 @@ class DXCamera(Camera):
         if os.path.isfile(full_path):
             os.remove(full_path)
 
-        if properties.memory_cache and properties.seconds == 0:
-            raise Exception("You must specify a max seconds that will fit in memory if you enable the memory_cache.")
-
         self._native.encode_video(self._handle, full_path, properties)
 
     def stop_encoding(self):

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <stdio.h>
 #include <mutex>
-#include <filesystem>
 
 #include <winrt/Windows.Graphics.Capture.h>
 #include <windows.graphics.capture.interop.h>
@@ -27,13 +26,6 @@ namespace winrt
     using namespace Windows::Graphics::Imaging;
     using namespace Windows::System;
 }
-
-//extern "C"
-//{
-//    HRESULT __stdcall CreateDirect3D11DeviceFromDXGIDevice(::IDXGIDevice* dxgiDevice,
-//        ::IInspectable** graphicsDevice);
-//
-//}
 
 inline auto CreateCaptureItemForMonitor(HMONITOR hmon)
 {
@@ -144,63 +136,16 @@ unsigned int add_capture(std::shared_ptr<SimpleCapture> capture)
 
 VideoEncoder encoder; // PS: this means we can only do one at a time
 
-static winrt::Windows::Foundation::IAsyncOperation<uint64_t> CopyStreams(
-    winrt::Windows::Storage::Streams::InMemoryRandomAccessStream& memoryStream,
-    winrt::Windows::Storage::Streams::IRandomAccessStream& fileStream)
-{
-    // Reset position of memory stream to the beginning
-    memoryStream.Seek(0);
-
-    // Read from memory stream and write to file stream
-    winrt::Windows::Storage::Streams::Buffer buffer(1000000);
-    uint64_t totalBytes = memoryStream.Size();
-
-    while (totalBytes > 0)
-    {
-        uint64_t bytesToRead = (totalBytes > buffer.Capacity()) ? buffer.Capacity() : totalBytes;
-        auto readBuffer = co_await memoryStream.ReadAsync(buffer, static_cast<uint32_t>(bytesToRead), winrt::Windows::Storage::Streams::InputStreamOptions::None);
-        co_await fileStream.WriteAsync(readBuffer);
-        totalBytes -= bytesToRead;
-    }
-    co_return totalBytes;
-}
+const int ERROR_ENCODER_BUSY = -1;
 
 static winrt::Windows::Foundation::IAsyncOperation<int> RunEncodeVideo(std::shared_ptr<SimpleCapture> capture, const WCHAR* fullPath, VideoEncoderProperties* properties)
 {
     if (encoder.IsRunning()) {
-        throw new std::exception("Another encoder is running, you can encode one video at a time");
-    }
-    std::filesystem::path fsPath(fullPath);
-    auto path = fsPath.parent_path().wstring();
-    auto filename = fsPath.filename().wstring();
-    if (properties->memory_cache > 0) {
-        if (properties->seconds == 0) {
-            throw new std::exception("The memory_cache option requires a fixed duration in seconds.");
-        }
+        co_return ERROR_ENCODER_BUSY;
     }
 
-    int rc = 0;
-    auto folder = co_await winrt::Windows::Storage::StorageFolder::GetFolderFromPathAsync(path);
-    auto file = co_await folder.CreateFileAsync(filename);
-    auto stream = co_await file.OpenAsync(winrt::Windows::Storage::FileAccessMode::ReadWrite);
-
-    if (properties->memory_cache > 0) {
-        winrt::Windows::Storage::Streams::InMemoryRandomAccessStream cache;
-        // Preallocate a 1 gigabyte buffer (1024 * 1024 * 1024 bytes)
-        uint32_t bufferSize = 1024 * 1024 * 1024;
-        winrt::Windows::Storage::Streams::Buffer buffer(bufferSize);
-        stream.WriteAsync(buffer).get();
-        stream.Seek(0);
-
-        auto result = encoder.EncodeAsync(capture, properties, cache);
-        rc = co_await result;
-        co_await CopyStreams(cache, stream);
-    }
-    else {
-        auto result = encoder.EncodeAsync(capture, properties, stream);
-        rc = co_await result;
-    }
-    co_await stream.FlushAsync();
+    auto result = encoder.EncodeAsync(capture, properties, fullPath);
+    auto rc = co_await result;
     co_return rc;
 }
 
@@ -303,7 +248,7 @@ extern "C" {
         if (ptr != nullptr) {
             auto arrivals = ptr->GetCaptureTimes();
             auto available = (unsigned int)arrivals.size();
-            if (buffer != nullptr) {
+            if (buffer != nullptr && available > 0) {
                 auto count = std::min(available, size);
                 ::memcpy(buffer, arrivals.data(), count * sizeof(double));
             }
@@ -316,4 +261,13 @@ extern "C" {
     {
         m_timer.Sleep(microseconds);
     }
+
+    LPCSTR __declspec(dllexport) WINAPI GetErrorMessage(int hr)
+    {
+        if (hr == ERROR_ENCODER_BUSY) {
+            return "Another encoder is running, you can encode one video at a time";
+        }
+        return encoder.GetErrorMessage(hr);
+    }
+
 }

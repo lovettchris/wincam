@@ -28,5 +28,10 @@ c.EncodingCompleted += OnEncodingCompleted;
 c.EncodeVideo("d:\\temp\\test.mp4", props);
 ```
 
+## FFmpeg
+
+You can also optionally uses FFmpeg if you install the binares and add them to your PATH,
+you can then enable FFmpeg encodnig using `props.ffmpeg = 1`.
+
 
 See https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net

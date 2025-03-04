@@ -16,7 +16,7 @@ namespace WpfTestApp
 {
     /// <summary>
     /// Interaction logic for CalibrationView.xaml.  This class records some mouse events on the screen
-    /// then compares the result in the encoded videoto see how well the video lines up with the original.
+    /// then compares the result in the encoded video to see how well the video lines up with the original.
     /// </summary>
     public partial class CalibrationView : UserControl
     {
