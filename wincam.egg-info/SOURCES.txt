@@ -24,3 +24,11 @@ wincam/native/runtimes/x64/ScreenCapture.dll
 wincam/native/runtimes/x64/ScreenCapture.exp
 wincam/native/runtimes/x64/ScreenCapture.lib
 wincam/native/runtimes/x64/ScreenCapture.pdb
+wincam/native/runtimes/x64/avcodec-61.dll
+wincam/native/runtimes/x64/avdevice-61.dll
+wincam/native/runtimes/x64/avfilter-10.dll
+wincam/native/runtimes/x64/avformat-61.dll
+wincam/native/runtimes/x64/avutil-59.dll
+wincam/native/runtimes/x64/postproc-58.dll
+wincam/native/runtimes/x64/swresample-5.dll
+wincam/native/runtimes/x64/swscale-8.dll

@@ -1,7 +1,6 @@
 dist
 examples
 notebooks
-recordings
 src
 tests
 wincam

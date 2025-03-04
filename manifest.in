@@ -1,2 +1,3 @@
 include LICENSE
 include wincam/native/runtimes/x64/ScreenCapture*
+include wincam/native/runtimes/x64/*.dll
