@@ -415,12 +415,12 @@ namespace WpfTestApp
                 if (sd.ShowDialog() == true)
                 {
                     var file = sd.FileName;
-                    EncodeVideo(file, seconds:60, this.Native.IsChecked == true);
+                    EncodeVideo(file, seconds:60, this.Native.IsChecked == true, this.FFmpeg.IsChecked == true);
                 }
             }
         }
 
-        private async void EncodeVideo(string file, uint seconds, bool native = true)
+        private async void EncodeVideo(string file, uint seconds, bool native = true, bool ffmpeg = false)
         {
             if (this.capture != null)
             {
@@ -439,7 +439,7 @@ namespace WpfTestApp
                         frameRate = this.frameRate,
                         quality = VideoEncodingQuality.HD720p,
                         seconds = seconds,
-                        ffmpeg = 1,
+                        ffmpeg = ffmpeg ? 1u : 0u,
                     };
 
                     // kicks off an internal async task

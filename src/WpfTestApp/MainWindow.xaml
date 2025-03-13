@@ -18,10 +18,23 @@
       <ToggleButton x:Name="NewWindowButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Checked="OnNewWindowClicked">NewWindow</ToggleButton>
       <Button x:Name="EncodeButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnEncode">Windows Encode</Button>
       <Button x:Name="CalibrateButton" Margin="2" FontSize="14" MinWidth="100" MinHeight="40" Click="OnCalibrate">Calibrate</Button>
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5">
-        <CheckBox x:Name="Native" VerticalAlignment="Center"/>
-        <Label Content="Native" VerticalAlignment="Center"/>
-      </StackPanel>
+      <Grid Margin="5,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <CheckBox x:Name="Native" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+        <Label Content="Native" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"/>
+
+        <CheckBox x:Name="FFmpeg" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+        <Label Content="FFmpeg" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+      </Grid>
       <ComboBox x:Name="FpsCombo" SelectedIndex="0" FontSize="14" MinWidth="80" Padding="12" >
         <ComboBoxItem>30fps</ComboBoxItem>
         <ComboBoxItem>60fps</ComboBoxItem>

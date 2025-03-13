@@ -184,8 +184,9 @@ public:
     void OnVideoStarting(MediaStreamSource const& src, MediaStreamSourceStartingEventArgs const& args)
     {
         winrt::com_ptr<ID3D11Texture2D> result;
-        _capture->ReadNextTexture(10000, result);
-        args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::milliseconds(0)));
+        auto timestamp = _capture->ReadNextTexture(10000, result);
+        std::chrono::microseconds ms(static_cast<long long>(timestamp * 1e6));
+        args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::microseconds>(ms));
     }
 
     void OnSampleRequested(MediaStreamSource const& src, MediaStreamSourceSampleRequestedEventArgs const& args)
@@ -201,7 +202,7 @@ public:
 
             // but store ticks according to our start time so the user knows how much delay there was getting
             // the video pipeline up and running.
-            _ticks.push_back(_sampleTimer.Seconds());
+            _ticks.push_back(seconds); // _sampleTimer.Seconds());
             if (_maxDuration > 0 && seconds >= _maxDuration) {
                 _stopped = true;
             };
