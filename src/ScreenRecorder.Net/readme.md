@@ -1,7 +1,7 @@
 # README
 
-This package contains a .NET 8.0 wrapper on the native ScreenCapture  library that uses Direct3D11CaptureFramePool do capture frames
-from your screen and do efficient GPU only video encoding of these captured frames.
+This package contains a .NET 8.0 wrapper on the native ScreenCapture  library that uses Direct3D11CaptureFramePool to do
+capture frames from your screen and optional efficient GPU only video encoding of these captured frames.
 
 ## Usage
 
@@ -30,8 +30,8 @@ c.EncodeVideo("d:\\temp\\test.mp4", props);
 
 ## FFmpeg
 
-You can also optionally uses FFmpeg if you install the binares and add them to your PATH,
-you can then enable FFmpeg encodnig using `props.ffmpeg = 1`.
+You can also optionally uses FFmpeg if you install the binaries and add them to your PATH,
+you can then enable FFmpeg encoding using `props.ffmpeg = 1`.
 
 
 See https://github.com/lovettchris/wincam/tree/main/src/ScreenRecorder.Net
