@@ -67,7 +67,6 @@ class FFmpegEncoderImpl : public VideoEncoderImpl
 {
     std::vector<double> _ticks;
     bool _running = false;
-    util::Timer _sampleTimer;
     std::string _errorString;
 
 public:
@@ -232,15 +231,19 @@ public:
                 throttle.Step(); // give it time to capture a frame.
                 winrt::com_ptr<ID3D11Texture2D> texture;
                 frame_time = capture->ReadNextTexture(10000, texture);
-                if (first_time == -1) {
-                    first_time = frame_time;
-                }
-                frame_time -= first_time;
-
                 if (frame_time < 0 || !texture) {
                     throw std::exception("ReadNextTexture failed");
                 }
-                if (maxDuration > 0 && timer.Seconds() > maxDuration) {
+                if (first_time == -1) {
+                    first_time = frame_time;
+                    // we cannot use the time returned from window because it generates this error:
+                    // Application provided invalid, non monotonically increasing dts to muxer in stream.
+					// Instead we ensure a monotonically increasing time by using our own timer.
+                    timer.Start();
+                }
+                frame_time = timer.Seconds();
+
+                if (maxDuration > 0 && frame_time > maxDuration) {
                     break;
                 }
                 frameCount++;

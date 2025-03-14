@@ -185,6 +185,11 @@ public:
     {
         winrt::com_ptr<ID3D11Texture2D> result;
         auto timestamp = _capture->ReadNextTexture(10000, result);
+		if (result == nullptr) {
+            _stopped = true;
+			return;
+		}
+		timestamp = _sampleTimer.Seconds();
         std::chrono::microseconds ms(static_cast<long long>(timestamp * 1e6));
         args.Request().SetActualStartPosition(std::chrono::duration_cast<std::chrono::microseconds>(ms));
     }
@@ -198,11 +203,17 @@ public:
         {
             winrt::com_ptr<ID3D11Texture2D> result;
             auto timestamp = _capture->ReadNextTexture(10000, result);
-            auto seconds = timestamp; // use the time this frame was rendered to sync the video.
-
-            // but store ticks according to our start time so the user knows how much delay there was getting
+            if (result == nullptr) {
+                _stopped = true;
+                args.Request().Sample(nullptr);
+                return;
+            }
+            // the timestamp from windows can contain duplicate values if a frame is skipped which we don't want
+			// so we use our own timer to ensure a monotonically increasing time.
+            auto seconds = _sampleTimer.Seconds();
+            // Store ticks according to our start time so the user knows how much delay there was getting
             // the video pipeline up and running.
-            _ticks.push_back(seconds); // _sampleTimer.Seconds());
+            _ticks.push_back(seconds);
             if (_maxDuration > 0 && seconds >= _maxDuration) {
                 _stopped = true;
             };

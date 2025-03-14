@@ -58,7 +58,16 @@ class VideoRecorder:
         self.stop()
 
     def video_thread(
-        self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, ffmpeg: bool
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        fps: int,
+        seconds_per_video: int,
+        episodes: int,
+        native: bool,
+        ffmpeg: bool,
     ):
         index = 0
         print()
@@ -72,6 +81,8 @@ class VideoRecorder:
                 self.record_video(filename, x, y, w, h, fps, seconds_per_video, index)
 
             index += 1
+            if episodes > 0 and index >= episodes:
+                break
             if seconds_per_video == 0:
                 break
 
@@ -194,10 +205,21 @@ class VideoRecorder:
             avg_step = sum(ticks) / len(ticks)
             print(f"frame step times, min: {min_step:.3f}, max: {max_step:.3f}, avg: {avg_step:.3f}")
 
-    def start(self, x: int, y: int, w: int, h: int, fps: int, seconds_per_video: int, native: bool, ffmpeg: bool):
+    def start(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        fps: int,
+        seconds_per_video: int,
+        episodes: int,
+        native: bool,
+        ffmpeg: bool,
+    ):
         self._stop = False
         self._thread = Thread(
-            target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, native, ffmpeg)
+            target=lambda: self.video_thread(x, y, w, h, fps, seconds_per_video, episodes, native, ffmpeg)
         )
         self._thread.start()
 
@@ -237,7 +259,7 @@ def main():
         x, y, w, h = desktop.find(pid)
 
     recorder = VideoRecorder(args.output)
-    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.native, not args.windows)
+    recorder.start(x, y, w, h, args.fps, args.seconds_per_video, args.episodes, args.native, not args.windows)
     input("Press ENTER to stop recording...")
     recorder.stop()
 

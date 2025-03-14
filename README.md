@@ -20,7 +20,7 @@ to get a nice smooth 30 or 60 fps video this library can do it.
 
 This is using a new Windows 10 API called
 [Direct3D11CaptureFramePool](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool?view=winrt-26100)
-which requires DirectX 11 and a GPU.
+which requires a GPU that supports DirectX 11.
 
 To get the fastest time possible, this library is implemented in C++ on the GPU using DirectX11 and the C++ library
 copies each frame directly into a buffer provided by the python code. This C++ library is loaded into your python
@@ -84,6 +84,9 @@ like 30 fps.
 Note that this sleep is more accurate that python `time.sleep()` which on Windows is very inaccurate with a
 tolerance of +/- 15 milliseconds.  But this more accurate sleep is using a spin wait which uses one core of your CPU.
 
+Note also that windows will only provide a frame if something has changed, so you may request 60fps, but if
+things are not updating you may see longer delays between each call to get_bgr_frame.
+
 ## Video Encoding
 
 `wincam` also has an optimized way to encode videos directly on your GPU so your python code does not have to poll for
@@ -115,6 +118,16 @@ Will create a 60 second video of the screen bounds at 60fps with HD1080p quality
 
 To create a variable length video based on other input run the encode_video in a background thread then call
 `camera.stop_encoding()` to stop it.
+
+# Building the code
+
+To build the C++ code you need Visual Studio 2022 and the Windows SDK version 10.0.26100.0.  You also need to install
+the latest FFmpeg binaries, includes and libs from https://ffmpeg.org/download.html then set an environment variable
+named  `FFmpegPath` pointing to the installed bin folder where you see `ffmpeg.exe`.
+
+Now load the `src\ScreenCapture.sln` into Visual Studio and select Release, x64 build configuration and select
+Build/Rebuild.  Use the `src\build.cmd` command to copy the built binaries to the right location in the
+python wincam folder so that `pip install -e .` of your wincam bits will find these newly built binaries.
 
 ## Credits
 

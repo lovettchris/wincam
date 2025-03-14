@@ -82,6 +82,7 @@ winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
 {
     bool request_ffmpeg = (properties->ffmpeg == 1);
     if (_ffmpeg != request_ffmpeg) {
+        _ffmpeg = request_ffmpeg;
         CreateImpl();
     }
     properties->ffmpeg = _ffmpeg ? 1 : 0;

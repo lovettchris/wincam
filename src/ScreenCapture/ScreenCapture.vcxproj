@@ -107,7 +107,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -115,7 +115,7 @@
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)
@@ -135,7 +135,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -145,7 +145,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)
@@ -163,7 +163,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -171,7 +171,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)
@@ -189,7 +189,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -197,7 +197,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)
@@ -217,7 +217,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -227,7 +227,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)
@@ -247,7 +247,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>F:\Tools\ffmpeg\include;$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ffmpegPath)\..\include;$(ProjectDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -257,7 +257,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
       <AdditionalDependencies>d3d11.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;avutil.lib;swscale.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>F:\Tools\ffmpeg\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ffmpegPath)\..\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>set TARGET=$(ProjectDir)..\..\wincam\native\runtimes\$(Platform)

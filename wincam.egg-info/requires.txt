@@ -16,6 +16,7 @@ Flake8-pyproject
 mypy
 mypy-extensions
 types-PyYAML
+twine
 
 [test]
 pytest==7.3.1
