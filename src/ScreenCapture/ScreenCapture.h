@@ -1,39 +1,39 @@
 #pragma once
+#include <mutex>
 
-#include <Windows.h>
+class SimpleCaptureImpl;
 
-extern "C" {
-    #define INVALID_HANDLE -1
-    unsigned int __declspec(dllexport) WINAPI StartCapture(int x, int y, int width, int height, bool captureCursor);
-    void __declspec(dllexport) WINAPI StopCapture(unsigned int handle);
-    double __declspec(dllexport) WINAPI ReadNextFrame(unsigned int handle, char* buffer, unsigned int size);
-    bool __declspec(dllexport)  WINAPI WaitForNextFrame(unsigned int handle, int timeout);
+class ScreenCapture
+{
+public:
+    __declspec(dllexport) ScreenCapture();
+    __declspec(dllexport) ~ScreenCapture();
 
-    const int VideoEncodingQualityAuto = 0;
-    const int VideoEncodingQualityHD1080p = 1;
-    const int VideoEncodingQualityHD720p = 2;
-    const int VideoEncodingQualityWvga = 3;
-    const int VideoEncodingQualityNtsc = 4;
-    const int VideoEncodingQualityPal = 5;
-    const int VideoEncodingQualityVga = 6;
-    const int VideoEncodingQualityQvga = 7;
-    const int VideoEncodingQualityUhd2160p = 8;
-    const int VideoEncodingQualityUhd4320p = 9;
+    __declspec(dllexport) void StartCapture(
+        winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice const& device,
+        winrt::Windows::Graphics::Capture::GraphicsCaptureItem const& item,
+        winrt::Windows::Graphics::DirectX::DirectXPixelFormat pixelFormat,
+        RECT bounds,
+        bool captureCursor);
 
-    struct VideoEncoderProperties
-    {
-        unsigned int bitrateInBps; // e.g. 9000000 for 9 mbps.
-        unsigned int frameRate; // e.g 30 or 60
-        unsigned int quality; // see above
-        unsigned int seconds; // maximum length before encoding finishes or 0 for infinite.
-        unsigned int ffmpeg; // 1=use ffmpeg, returns 0 if ffmpeg is not found.
-    };
+    __declspec(dllexport) bool WaitForNextFrame(uint32_t timeout);
 
-    int __declspec(dllexport) WINAPI EncodeVideo(unsigned int captureHandle, const WCHAR* filename, VideoEncoderProperties* properties);
-    int __declspec(dllexport) WINAPI StopEncoding();
-    unsigned int __declspec(dllexport) WINAPI GetSampleTimes(double* buffer, unsigned int size);
-    unsigned int __declspec(dllexport) WINAPI GetCaptureTimes(unsigned int captureHandle, double* buffer, unsigned int size);
-    void __declspec(dllexport) WINAPI SleepMicroseconds(uint64_t microseconds);
-    LPCSTR __declspec(dllexport) WINAPI GetErrorMessage(int hr);
+    // When copying GPU to CPU data the row pitch can be 64 or 128 bit aligned, which can mean
+    // you need to pass in a slightly bigger buffer. This ensures ReadNextFrame can do a single
+    // optimized memcpy operation but it also means it is up to you to crop the final image
+    // to remove that extra data on the right side of each row.
+    __declspec(dllexport) RECT GetCaptureBounds();
 
-}
+    __declspec(dllexport) double ReadNextFrame(uint32_t timeout, char* buffer, unsigned int size);
+
+    __declspec(dllexport) RECT GetTextureBounds();
+    __declspec(dllexport) double ReadNextTexture(uint32_t timeout, winrt::com_ptr<ID3D11Texture2D>& result);
+
+    __declspec(dllexport) std::vector<double> GetCaptureTimes();
+
+    // C++ only interface.
+    void ReadPixels(ID3D11Texture2D* texture, char* buffer, unsigned int size);
+
+private:
+    std::unique_ptr<SimpleCaptureImpl> m_pimpl;
+};

@@ -79,7 +79,7 @@ public:
     }
 
     winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
-        std::shared_ptr<SimpleCapture> capture,
+        std::shared_ptr<ScreenCapture> capture,
         VideoEncoderProperties* properties,
         std::wstring filePath) override
     {
@@ -95,6 +95,7 @@ public:
         AVFrame* frame = nullptr;
         AVStream* out_stream = nullptr;
         bool debug_file_io = false;
+        this->_ticks.clear();
 
         try {
             if (!capture->WaitForNextFrame(10000)) {
@@ -281,12 +282,9 @@ public:
                 sws_scale(swsCtx, frame->data, frame->linesize, 0, codecContext->height,
                     dstFrame->data, dstFrame->linesize);
 
-                //dstFrame->pts = (pts++) * avp_duration;
                 // Sync presentation time to real time frame times we get from windows!
                 dstFrame->pts = static_cast<int64_t>(frame_time * 1000 * frameRate); // in time_base units.
                 dstFrame->duration = avp_duration;
-                //dstFrame->pts = static_cast<int64_t>(frame_time * avp_duration) / frameRate; // in time_base units
-                //dstFrame->duration = avp_duration; // duration in time_base units (NOT milliseconds).
 
                 // Send the frame to the encoder and receive the encoded packets.
                 hr = avcodec_send_frame(codecContext, dstFrame);
@@ -302,11 +300,8 @@ public:
                         packet->stream_index = 0;                        
                         hr = av_interleaved_write_frame(formatContext, packet);
                     }
-                    if (hr < 0) {
-                        av_packet_unref(packet);
-                        check_ffmpeg_error(hr, "av_interleaved_write_frame: ");
-                    }
                     av_packet_unref(packet);
+                    check_ffmpeg_error(hr, "av_interleaved_write_frame: ");
                 }
             }
 
@@ -348,7 +343,6 @@ public:
             av_frame_free(&frame);
         }
         if (dstFrame) {
-            // av_freep(&dstFrame->data[0]);
             av_frame_free(&dstFrame);
         }
 

@@ -42,7 +42,7 @@ winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DSurface CreateDirect3DSu
 
 class MediaTranscoderImpl : public VideoEncoderImpl {
 public:
-    std::shared_ptr<SimpleCapture> _capture;
+    std::shared_ptr<ScreenCapture> _capture;
     bool _stopped = false;
     std::vector<double> _ticks;
     double _maxDuration = 0; // seconds
@@ -71,7 +71,7 @@ public:
     bool IsRunning() { return _running; }
 
     winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
-        std::shared_ptr<SimpleCapture> capture,
+        std::shared_ptr<ScreenCapture> capture,
         VideoEncoderProperties* properties,
         std::wstring filePath) override
     {

@@ -270,7 +270,7 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClCompile Include="FFmpegEncoder.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="ScreenCapture.cpp" />
-    <ClCompile Include="SimpleCapture.cpp" />
+    <ClCompile Include="ScreenCaptureApi.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VideoEncoder.cpp" />
     <ClCompile Include="WindowsEncoder.cpp" />
@@ -280,9 +280,9 @@ copy /y "$(TargetDir)ScreenCapture.???" "%TARGET%"</Command>
     <ClInclude Include="FFmpegEncoder.h" />
     <ClInclude Include="FpsThrottle.h" />
     <ClInclude Include="ScreenCapture.h" />
+    <ClInclude Include="ScreenCaptureApi.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="SimpleCapture.h" />
     <ClInclude Include="UnicodeFile.h" />
     <ClInclude Include="VideoEncoder.h" />
     <ClInclude Include="WindowsEncoder.h" />

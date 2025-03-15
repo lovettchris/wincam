@@ -1,7 +1,7 @@
 # README
 
-This package contains a .NET 8.0 wrapper on the native ScreenCapture  library that uses Direct3D11CaptureFramePool to do
-capture frames from your screen and optional efficient GPU only video encoding of these captured frames.
+This is source code for the [ScreenRecorder.NET Nuget Package](https://www.nuget.org/packages/ScreenRecorder.Net/) which is a .NET 8.0 wrapper on the native ScreenCapture library that uses Direct3D11CaptureFramePool to capture frames from your screen and
+provides an optional efficient GPU only video encoding of these captured frames.
 
 ## Usage
 

@@ -76,7 +76,7 @@ unsigned int VideoEncoder::GetSampleTimes(double* buffer, unsigned int size)
 }
 
 winrt::Windows::Foundation::IAsyncOperation<int> VideoEncoder::EncodeAsync(
-    std::shared_ptr<SimpleCapture> capture,
+    std::shared_ptr<ScreenCapture> capture,
     VideoEncoderProperties* properties,
     std::wstring filePath)
 {

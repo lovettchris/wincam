@@ -5,7 +5,12 @@
 #include <chrono>
 #include <iomanip>
 #include <vector>
+#include <algorithm> // Add this include for std::min
+#include <numeric> // For std::accumulate
 #include "Timer.h"
+#include "FpsThrottle.h"
+#undef min
+#undef max
 
 using namespace util;
 
@@ -28,7 +33,7 @@ struct MinMaxAvg
 	}
 };
 
-int main()
+int TestTimer()
 {
 	Timer t;
 	t.Start();
@@ -37,7 +42,7 @@ int main()
 	std::vector<double> errors;
 	errors.reserve(microseconds);
 
-	while (microseconds > 0) {
+	while (microseconds > 1) {
 		errors.clear();
 		std::cout << "testing sleep for " << microseconds << " microseconds" << std::endl;
 		auto iterations = 10000000 / microseconds; // 10 seconds each
@@ -57,4 +62,38 @@ int main()
 		
 		microseconds /= 10;
 	}
+}
+
+void TestFpsThrottle() {
+	std::cout << "Testing FpsThrottle at 60fps for 20 seconds..." << std::endl;
+	FpsThrottle throttle(60);
+	throttle.Step(); // warmup
+	throttle.Reset();
+	Timer timer;
+	timer.Start();
+	std::vector<double> ticks;
+	for (int i = 0; i < 60 * 20; i++) {
+		throttle.Step();
+		ticks.push_back(timer.Milliseconds());
+	}
+
+	std::vector<double> steps;
+	for (int i = 1; i < ticks.size(); i++) {
+		steps.push_back(ticks[i] - ticks[i - 1]);
+	}
+
+	auto minStep = *std::min_element(steps.begin(), steps.end());
+	auto maxStep = *std::max_element(steps.begin(), steps.end());
+	double sum = std::accumulate(steps.begin(), steps.end(), 0.0);
+	double mean = sum / steps.size();
+
+	std::cout << "min=" << minStep << " max=" << maxStep << " mean=" << mean << std::endl;
+}
+
+
+
+int main()
+{
+	TestFpsThrottle();
+	TestTimer();
 }

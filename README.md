@@ -13,6 +13,9 @@ with DXCamera(x, y, w, h, fps=30) as camera:
 
 See [Demo Video](https://youtu.be/og7-3b0bsuo)
 
+This repo also contains the C++ implementation and a .NET wrapper for
+[ScreenRecorder.NET nuget package](src/ScreenRecorder.Net/readme.md).
+
 ## Introduction
 
 When you need to capture video frames in a low latency (< 5 milliseconds into a numpy array)
@@ -128,6 +131,17 @@ named  `FFmpegPath` pointing to the installed bin folder where you see `ffmpeg.e
 Now load the `src\ScreenCapture.sln` into Visual Studio and select Release, x64 build configuration and select
 Build/Rebuild.  Use the `src\build.cmd` command to copy the built binaries to the right location in the
 python wincam folder so that `pip install -e .` of your wincam bits will find these newly built binaries.
+
+# Debugging
+
+If you build the debug bits and copy them to the same place build.cmd copies the release bits then you can debug your
+python code into the C++ code by setting a breakpoint in VS Code on the native python call like
+`self._native.read_next_frame`, then use the interactive view to print the python `os.getpid()` then use your Visual
+Studio 2022 instance to "attach debugger" to that python process.  Put a breakpoint on `ReadNextFrame` in
+`ScreenCaptureApi.cpp`, not press F10 in the python VS Code instance and it should hit your breakpoint in Visual Studio.
+
+You can also debug using mixed mode .NET debugging in the `WpfTestApp` so you can step directly from .NET into the C++
+implementation.
 
 ## Credits
 

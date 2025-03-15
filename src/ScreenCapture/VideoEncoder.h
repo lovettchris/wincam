@@ -1,12 +1,12 @@
 #pragma once
-#include "SimpleCapture.h"
 #include "ScreenCapture.h"
+#include "ScreenCaptureApi.h"
 
 class VideoEncoderImpl
 {
 public:
     virtual winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
-        std::shared_ptr<SimpleCapture> capture,
+        std::shared_ptr<ScreenCapture> capture,
         VideoEncoderProperties* properties,
         std::wstring filePath) = 0;
 
@@ -28,7 +28,7 @@ public:
     __declspec(dllexport) ~VideoEncoder();
 
     __declspec(dllexport) winrt::Windows::Foundation::IAsyncOperation<int> EncodeAsync(
-        std::shared_ptr<SimpleCapture> capture,
+        std::shared_ptr<ScreenCapture> capture,
         VideoEncoderProperties* properties,
         std::wstring filePath);
 

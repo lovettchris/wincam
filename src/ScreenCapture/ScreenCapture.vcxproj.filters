@@ -21,9 +21,6 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SimpleCapture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VideoEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -36,15 +33,15 @@
     <ClCompile Include="WindowsEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ScreenCaptureApi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ScreenCapture.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SimpleCapture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Timer.h">
@@ -66,6 +63,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="UnicodeFile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenCaptureApi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
