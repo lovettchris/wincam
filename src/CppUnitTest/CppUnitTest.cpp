@@ -33,7 +33,7 @@ struct MinMaxAvg
 	}
 };
 
-int TestTimer()
+void TestTimer()
 {
 	Timer t;
 	t.Start();

@@ -1,23 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Nullable>disable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <Platforms>AnyCPU;ARM64</Platforms>
-    <Platforms>x64</Platforms>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+		<Nullable>disable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<Platforms>AnyCPU;ARM64</Platforms>
+		<Platforms>x64</Platforms>
+	</PropertyGroup>
 
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="echo copying native binaries to $(TargetDir)&#xD;&#xA;COPY ..\x64\$(Configuration)\ScreenCapture* $(TargetDir)" />
-  </Target>
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<Exec Command="echo copying native binaries to $(TargetDir)&#xD;&#xA;COPY ..\x64\$(Configuration)\ScreenCapture* $(TargetDir)" />
+	</Target>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ScreenRecorder.Net\ScreenRecorder.Net.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="ScreenRecorder.Net" Version="1.0.12" />
+	</ItemGroup>
+
+	<ItemGroup>
+
+	</ItemGroup>
 
 </Project>
